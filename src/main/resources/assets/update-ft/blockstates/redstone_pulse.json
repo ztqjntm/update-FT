@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "update-ft:block/redstone_pulse"
+    }
+  }
+}

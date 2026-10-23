@@ -1,0 +1,53 @@
+# gradle
+
+.gradle/
+build/
+out/
+classes/
+
+# eclipse
+
+*.launch
+
+# idea
+
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# vscode / 其他编辑器
+
+.settings/
+.vscode/
+.fleet/
+.vs/
+bin/
+.classpath
+.project
+
+# macos / windows
+
+*.DS_Store
+Thumbs.db
+desktop.ini
+
+# fabric（开发时 runClient / runServer 生成的运行目录）
+
+run/
+
+# 日志
+
+logs/
+*.log
+
+# java
+
+hs_err_*.log
+replay_*.log
+*.hprof
+*.jfr
+
+# workbuddy 本地工作区数据（AI 会话记忆、缓存等，只属于本机，不随项目发布）
+
+.workbuddy/

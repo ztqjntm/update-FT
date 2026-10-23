@@ -1,0 +1,38 @@
+{
+  "item.update-ft.stone_arrow": "Stone Arrow",
+  "item.update-ft.copper_arrow": "Copper Arrow",
+  "item.update-ft.iron_arrow": "Iron Arrow",
+  "item.update-ft.diamond_arrow": "Diamond Arrow",
+  "item.update-ft.gold_arrow": "Golden Arrow",
+  "item.update-ft.netherite_arrow": "Netherite Arrow",
+  "item.update-ft.tnt_arrow": "TNT Arrow",
+  "item.update-ft.redstone_arrow": "Redstone Arrow",
+  "container.update-ft.fletching_table": "Fletching Table",
+  "block.update-ft.redstone_pulse": "Redstone Pulse",
+
+  "tooltip.update-ft.stone_arrow.1": "The crudest arrowhead, but it gets the job done.",
+  "tooltip.update-ft.stone_arrow.2": "Damage bonus: ±0",
+
+  "tooltip.update-ft.copper_arrow.1": "Copper tip, just sharp enough to work.",
+  "tooltip.update-ft.copper_arrow.2": "Damage bonus: ±0",
+
+  "tooltip.update-ft.iron_arrow.1": "A sturdy iron tip that rarely lets you down.",
+  "tooltip.update-ft.iron_arrow.2": "Damage bonus: +1",
+
+  "tooltip.update-ft.diamond_arrow.1": "Cuts through the gaps in any armor.",
+  "tooltip.update-ft.diamond_arrow.2": "Damage bonus: +2",
+
+  "tooltip.update-ft.gold_arrow.1": "All shine, no bite.",
+  "tooltip.update-ft.gold_arrow.2": "Damage bonus: ±0",
+
+  "tooltip.update-ft.netherite_arrow.1": "Netherite never dulls.",
+  "tooltip.update-ft.netherite_arrow.2": "Damage bonus: +4 - the strongest arrow here.",
+
+  "tooltip.update-ft.tnt_arrow.1": "Detonates where it lands.",
+  "tooltip.update-ft.tnt_arrow.2": "Radius 4 - breaks blocks, and hurts you too.",
+  "tooltip.update-ft.tnt_arrow.3": "Damage bonus: -1",
+
+  "tooltip.update-ft.redstone_arrow.1": "Crackles with redstone energy.",
+  "tooltip.update-ft.redstone_arrow.2": "Powers the block it hits and triggers nearby buttons, levers and doors.",
+  "tooltip.update-ft.redstone_arrow.3": "Damage bonus: -1"
+}

@@ -1,0 +1,38 @@
+{
+  "item.update-ft.stone_arrow": "石箭",
+  "item.update-ft.copper_arrow": "铜箭",
+  "item.update-ft.iron_arrow": "铁箭",
+  "item.update-ft.diamond_arrow": "钻石箭",
+  "item.update-ft.gold_arrow": "金箭",
+  "item.update-ft.netherite_arrow": "下界合金箭",
+  "item.update-ft.tnt_arrow": "TNT箭",
+  "item.update-ft.redstone_arrow": "红石箭",
+  "container.update-ft.fletching_table": "制箭台",
+  "block.update-ft.redstone_pulse": "红石脉冲",
+
+  "tooltip.update-ft.stone_arrow.1": "最简陋的箭头，胜在随处可得。",
+  "tooltip.update-ft.stone_arrow.2": "伤害加成：±0",
+
+  "tooltip.update-ft.copper_arrow.1": "铜制箭头，锋利度刚好够用。",
+  "tooltip.update-ft.copper_arrow.2": "伤害加成：±0",
+
+  "tooltip.update-ft.iron_arrow.1": "铁制箭头，结实可靠。",
+  "tooltip.update-ft.iron_arrow.2": "伤害加成：+1",
+
+  "tooltip.update-ft.diamond_arrow.1": "钻石箭头，轻易撕开护甲的缝隙。",
+  "tooltip.update-ft.diamond_arrow.2": "伤害加成：+2",
+
+  "tooltip.update-ft.gold_arrow.1": "金光闪闪，可惜只是装饰。",
+  "tooltip.update-ft.gold_arrow.2": "伤害加成：±0",
+
+  "tooltip.update-ft.netherite_arrow.1": "下界合金箭头，几乎不会磨损。",
+  "tooltip.update-ft.netherite_arrow.2": "伤害加成：+4，本模组最强箭矢。",
+
+  "tooltip.update-ft.tnt_arrow.1": "命中后原地引爆。",
+  "tooltip.update-ft.tnt_arrow.2": "半径 4 格，会破坏方块，也会伤到自己。",
+  "tooltip.update-ft.tnt_arrow.3": "伤害加成：-1",
+
+  "tooltip.update-ft.redstone_arrow.1": "红石箭头，命中时噼啪作响。",
+  "tooltip.update-ft.redstone_arrow.2": "命中方块后给目标通电，并触发周围的按钮、拉杆与门。",
+  "tooltip.update-ft.redstone_arrow.3": "伤害加成：-1"
+}

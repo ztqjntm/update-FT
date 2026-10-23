@@ -1,0 +1,34 @@
+{
+	"schemaVersion": 1,
+	"id": "update-ft",
+	"version": "${version}",
+	"name": "update-ft",
+	"description": "Update the Fletching Table,add more items,and... more FUN!!!",
+	"authors": [
+		"ztqjntm"
+	],
+	"contact": {
+		"homepage": "https://space.bilibili.com/3546940667071250",
+		"sources": "https://space.bilibili.com/3546940667071250"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/update-ft/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"ztqjntm.update.UpdateFt"
+		],
+		"client": [
+			"ztqjntm.update.client.UpdateFtClient"
+		]
+	},
+	"mixins": [
+		"update-ft.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}
