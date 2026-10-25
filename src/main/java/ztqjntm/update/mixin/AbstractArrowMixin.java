@@ -3,9 +3,13 @@ package ztqjntm.update.mixin;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LightningBolt;
 import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Explosion;
@@ -84,6 +88,11 @@ public abstract class AbstractArrowMixin {
             this.updateft$triggerRedstone(self, hitResult);
         }
 
+        // 铜箭：雷雨天命中方块时召唤一道闪电（不影响原版命中流程，箭照样插进方块）
+        if (effect == ModArrowItem.Effect.LIGHTNING && !self.level().isClientSide()) {
+            this.updateft$summonLightning(self, hitResult.getLocation());
+        }
+
         // 珍珠箭：把射手传送到落点，箭本身消耗掉
         if (effect == ModArrowItem.Effect.TELEPORT) {
             if (self.level().isClientSide()) {
@@ -105,7 +114,7 @@ public abstract class AbstractArrowMixin {
         }
         ModArrowItem.Effect effect = arrow.getEffect();
         // 红石箭只在命中方块时触发，打中实体只算普通伤害
-        if (effect != ModArrowItem.Effect.EXPLOSIVE && effect != ModArrowItem.Effect.TELEPORT) {
+        if (effect == ModArrowItem.Effect.NONE || effect == ModArrowItem.Effect.REDSTONE) {
             return;
         }
         AbstractArrow self = (AbstractArrow) (Object) this;
@@ -114,10 +123,13 @@ public abstract class AbstractArrowMixin {
         }
         if (effect == ModArrowItem.Effect.EXPLOSIVE) {
             this.updateft$explode(self, hitResult.getLocation());
-        } else {
+            self.discard();
+        } else if (effect == ModArrowItem.Effect.TELEPORT) {
             this.updateft$teleportOwner(self, hitResult.getLocation());
+            self.discard();
+        } else if (effect == ModArrowItem.Effect.LIGHTNING) {
+            this.updateft$summonLightning(self, hitResult.getLocation());
         }
-        self.discard();
     }
 
     @Unique
@@ -250,5 +262,27 @@ public abstract class AbstractArrowMixin {
             }
         }
         return base.add(0.0D, 1.0D, 0.0D);
+    }
+
+    /**
+     * 铜箭：雷雨天命中时召唤一道真实闪电，做法和避雷针引雷一致。
+     * 不是雷雨天就什么都不做，箭照常插在地上。
+     * 只由服务端调用。
+     */
+    @Unique
+    private void updateft$summonLightning(AbstractArrow self, Vec3 hit) {
+        if (!(self.level() instanceof ServerLevel level) || !level.isThundering()) {
+            return;
+        }
+        LightningBolt bolt = EntityType.LIGHTNING_BOLT.create(level, EntitySpawnReason.TRIGGERED);
+        if (bolt == null) {
+            return;
+        }
+        bolt.snapTo(Vec3.atBottomCenterOf(BlockPos.containing(hit)));
+        // 让伤害/击杀算在射手头上（发射器射出的没有主人，则为 null）
+        if (self.getOwner() instanceof ServerPlayer player) {
+            bolt.setCause(player);
+        }
+        level.addFreshEntity(bolt);
     }
 }

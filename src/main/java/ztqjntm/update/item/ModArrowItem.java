@@ -21,7 +21,9 @@ public class ModArrowItem extends ArrowItem {
         /** 命中方块时激发一次红石脉冲（红石箭） */
         REDSTONE,
         /** 命中后把射手传送到落点（珍珠箭） */
-        TELEPORT
+        TELEPORT,
+        /** 雷雨天命中时召唤闪电（铜箭） */
+        LIGHTNING
     }
 
     private final int damageBonus;

@@ -27,9 +27,10 @@ public class ModItems {
             new Item.Properties());
 
     public static final Item COPPER_ARROW = register("copper_arrow",
-            props -> new ModArrowItem(props, 0, ModArrowItem.Effect.NONE,
+            props -> new ModArrowItem(props, 0, ModArrowItem.Effect.LIGHTNING,
                     "tooltip.update-ft.copper_arrow.1",
-                    "tooltip.update-ft.copper_arrow.2"),
+                    "tooltip.update-ft.copper_arrow.2",
+                    "tooltip.update-ft.copper_arrow.3"),
             new Item.Properties());
 
     public static final Item IRON_ARROW = register("iron_arrow",
