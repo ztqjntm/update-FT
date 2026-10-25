@@ -25,10 +25,12 @@ public class FletchingTableMenu extends AbstractContainerMenu {
 		this.container = container;
 		container.startOpen(playerInventory.player);
 
-		// 3x3 网格
+		// 3x3 网格。
+		// 坐标对齐工作台背景图：网格起始 (30, 17)，玩家背包 (8, 84)。
+		// 换成自绘 UI 时，只要改这两个数值即可。
 		for (int y = 0; y < 3; y++) {
 			for (int x = 0; x < 3; x++) {
-				this.addSlot(new Slot(container, x + y * 3, 62 + x * 18, 17 + y * 18));
+				this.addSlot(new Slot(container, x + y * 3, 30 + x * 18, 17 + y * 18));
 			}
 		}
 

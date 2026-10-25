@@ -9,9 +9,11 @@ import net.minecraft.world.entity.player.Inventory;
 import ztqjntm.update.menu.FletchingTableMenu;
 
 public class FletchingTableScreen extends AbstractContainerScreen<FletchingTableMenu> {
-	// 直接借用原版发射器的背景图（同为 3x3 布局），换成你自己的贴图也可以
+	// TODO 临时占位：先借用原版工作台的背景图，后续换成自己画的正式 UI。
+	// 工作台的 3x3 网格在 (30, 17)，所以槽位坐标要和 CraftingMenu 保持一致（见 FletchingTableMenu）。
+	// 右侧 (124, 35) 的输出格只是背景上画出来的，本模组还没有结果槽。
 	private static final Identifier CONTAINER_TEXTURE =
-			Identifier.withDefaultNamespace("textures/gui/container/dispenser.png");
+			Identifier.withDefaultNamespace("textures/gui/container/crafting_table.png");
 
 	public FletchingTableScreen(FletchingTableMenu menu, Inventory inventory, Component title) {
 		super(menu, inventory, title);

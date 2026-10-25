@@ -12,7 +12,7 @@
 | Java | 21 |
 | 包名 | `ztqjntm.update` |
 | 环境 | 客户端 + 服务端（`*`） |
-| 许可 | CC0-1.0 |
+| 许可 | MPL-2.0 |
 
 ## 功能
 
@@ -42,7 +42,7 @@
 
 ### 2. 制箭台界面
 
-- 主手右键制箭台即可打开 9 格（3×3）界面，背景直接借用原版发射器贴图。
+- 主手右键制箭台即可打开 9 格（3×3）界面。背景目前**临时借用原版工作台的贴图**（`textures/gui/container/crafting_table.png`），是占位方案，后续会换成自绘 UI；因此背景右侧那个输出格只是画出来的，没有对应的结果槽。
 - 不依赖方块实体：容器是每次打开时临时创建的 `SimpleContainer`，**不持久化**；关闭界面时把格内物品丢回给玩家（只在服务端执行，避免客户端刷出幽灵掉落物）。
 - 目前**没有任何合成/配方逻辑**，本质上是一个「关掉会吐东西」的 9 格临时箱子。
 
@@ -67,7 +67,7 @@ update-ft-template-1.21.11/
 ├── gradlew / gradlew.bat            # Gradle Wrapper 启动脚本
 ├── gradle/wrapper/                  # Wrapper 本体与下载地址
 ├── .github/workflows/build.yml      # GitHub Actions CI
-├── LICENSE                          # CC0-1.0
+├── LICENSE                          # MPL-2.0
 ├── README.md                        # 本文档
 └── src/main/
     ├── java/ztqjntm/update/         # Java 源码
@@ -89,7 +89,7 @@ update-ft-template-1.21.11/
 | `.github/workflows/build.yml` | CI：push / PR 时用 JDK 25 跑 `./gradlew build`，把 `build/libs/` 上传为构建产物。 |
 | `.gitignore` | 忽略 `build/`、`.gradle/`、IDE 配置等。 |
 | `.gitattributes` | 统一换行符，避免 Windows 下 `gradlew` 被改成 CRLF 而无法执行。 |
-| `LICENSE` | CC0-1.0 许可证全文，构建时会被复制进 jar。 |
+| `LICENSE` | Mozilla Public License 2.0 全文，构建时会被复制进 jar。 |
 
 ### Java 源码（`src/main/java/ztqjntm/update/`）
 
@@ -103,9 +103,9 @@ update-ft-template-1.21.11/
 | `item/ModItems.java` | 8 种箭的注册表。`register()` 用 `Item.Properties.setId(ResourceKey)` 绑定 ID 后注册进 `BuiltInRegistries.ITEM`；`initialize()` 把 8 种箭加入创造模式「战斗」页签。数值（伤害加成、是否爆炸）与悬停介绍的语言键都写在这个文件里。 |
 | `item/ModArrowItem.java` | 自定义箭物品类，继承 `ArrowItem`，多三个字段：`damageBonus`（伤害加成）、`effect`（命中效果枚举 `NONE` / `EXPLOSIVE` / `REDSTONE`）供 Mixin 读取，`descriptionKeys`（悬停介绍的语言键列表）。覆写的 `appendHoverText` 会把每个键渲染成一行灰色小字。 |
 | `menu/ModMenuTypes.java` | 注册 `MenuType<FletchingTableMenu>`，ID 为 `update-ft:fletching_table`；客户端用它来决定打开哪个 `Screen`，服务端用它来反序列化菜单。 |
-| `menu/FletchingTableMenu.java` | 制箭台容器逻辑（`AbstractContainerMenu`）：创建 3×3 槽位（坐标 62/17 起）与玩家背包（8/84）；实现 `quickMoveStack`（Shift 点击搬运）、`stillValid`；`removed()` 在服务端把剩余物品丢回玩家。 |
+| `menu/FletchingTableMenu.java` | 制箭台容器逻辑（`AbstractContainerMenu`）：创建 3×3 槽位（对齐工作台背景，起始 30/17）与玩家背包（8/84）；实现 `quickMoveStack`（Shift 点击搬运）、`stillValid`；`removed()` 在服务端把剩余物品丢回玩家。 |
 | `client/UpdateFtClient.java` | **客户端入口**（`ClientModInitializer`）。调用 `MenuScreens.register` 把 `MenuType` 与 `FletchingTableScreen` 绑定。 |
-| `client/FletchingTableScreen.java` | 界面渲染：176×166 布局，背景借用 `textures/gui/container/dispenser.png`；`init()` 里把标题居中；`render()` 末尾手动调 `renderTooltip`（1.21.11 的父类已不再自动调用）。 |
+| `client/FletchingTableScreen.java` | 界面渲染：176×166 布局，背景**暂时**借用 `textures/gui/container/crafting_table.png`（工作台贴图，占位用，换自绘 UI 只改 `CONTAINER_TEXTURE` 常量即可）；`init()` 里把标题居中；`render()` 末尾手动调 `renderTooltip`（1.21.11 的父类已不再自动调用）。 |
 | `mixin/AbstractArrowMixin.java` | 箭矢行为的核心 Mixin：① `@ModifyArg` 改 `onHitEntity` 里 `Entity.hurtOrSimulate(DamageSource, float)` 的伤害参数，加上 `damageBonus`；② `onHitBlock` 头部注入，按 `effect` 分派——TNT 箭爆炸并移除，红石箭先做 `TRIGGER_BLOCK` 触发、再在命中面放隐形脉冲方块通电（不取消原版逻辑，箭会照常插进方块）；③ `onHitEntity` 在所有 return 处注入，TNT 箭命中实体时爆炸并移除。所有爆炸、放方块与移除都只在服务端执行，客户端交回原版逻辑，由服务端包同步。 |
 | `mixin/ExampleMixin.java` | Fabric 模板自带的示例 Mixin（对 `MinecraftServer.loadLevel` 的空注入），**不产生任何效果**，可安全删除（同时从 `update-ft.mixins.json` 的 `mixins` 数组里去掉）。 |
 
@@ -145,4 +145,4 @@ update-ft-template-1.21.11/
 
 ## 许可
 
-本项目基于 Fabric 模板开发，采用 [CC0-1.0](LICENSE) 许可。
+本项目采用 [Mozilla Public License 2.0](LICENSE)（MPL-2.0）许可：可以自由使用、修改、再分发，修改过的 MPL 文件需要以同样的许可开源。
