@@ -94,9 +94,11 @@ update-ft-template-1.21.11/
 ├── .github/workflows/build.yml      # GitHub Actions CI
 ├── LICENSE                          # MPL-2.0
 ├── README.md                        # 本文档
-└── src/main/
-    ├── java/ztqjntm/update/         # Java 源码
-    └── resources/                   # 资源与元数据
+├── src/main/
+│   ├── java/ztqjntm/update/         # 通用代码（入口、物品、菜单、配方、Mixin）
+│   └── resources/                   # 资源与元数据
+└── src/client/
+    └── java/ztqjntm/update/client/  # 仅客户端的代码（入口、Screen）
 ```
 
 ## 文件说明
@@ -105,7 +107,7 @@ update-ft-template-1.21.11/
 
 | 文件 | 作用 |
 | --- | --- |
-| `build.gradle` | 应用 `net.fabricmc.fabric-loom-remap` 插件，声明 Minecraft / Fabric Loader / Fabric API 依赖、Java 21 编译目标，`processResources` 把 `fabric.mod.json` 里的 `${version}` 展开成真实版本号，`jar` 任务把 `LICENSE` 一并打进包里。 |
+| `build.gradle` | 应用 `net.fabricmc.fabric-loom-remap` 插件，声明 Minecraft / Fabric Loader / Fabric API 依赖、Java 21 编译目标；`loom { splitEnvironmentSourceSets() }` 把 `main` / `client` 拆成两个源集（`mods { }` 里同时声明两者），`processResources` 把 `fabric.mod.json` 里的 `${version}` 展开成真实版本号，`jar` 任务把 `LICENSE` 一并打进包里。 |
 | `gradle.properties` | 所有版本号的唯一来源：`minecraft_version=1.21.11`、`loader_version=0.19.5`、`loom_version=1.15-SNAPSHOT`、`fabric_api_version`、`version`（模组版本）、`group`（包名前缀）。JVM 内存与并行/配置缓存开关也在这里。 |
 | `settings.gradle` | 声明 Fabric Maven / Maven Central / Gradle Plugin Portal 三个插件仓库；`rootProject.name = 'update-ft'` 决定产物 jar 的文件名。 |
 | `gradlew`、`gradlew.bat` | Gradle Wrapper 启动脚本（Linux/macOS 与 Windows），保证不装 Gradle 也能构建。 |
@@ -116,7 +118,9 @@ update-ft-template-1.21.11/
 | `.gitattributes` | 统一换行符，避免 Windows 下 `gradlew` 被改成 CRLF 而无法执行。 |
 | `LICENSE` | Mozilla Public License 2.0 全文，构建时会被复制进 jar。 |
 
-### Java 源码（`src/main/java/ztqjntm/update/`）
+### Java 源码
+
+通用代码在 `src/main/java/ztqjntm/update/`，**客户端专用代码在 `src/client/java/ztqjntm/update/client/`**。开了 `splitEnvironmentSourceSets()` 之后，`main` 源集编译时拿不到任何客户端专用类，服务端误用客户端 API 会直接编译失败；反过来 `client` 可以用 `main` 里的一切。两边的 class 最终仍然打进同一个 jar。
 
 | 文件 | 作用 |
 | --- | --- |
@@ -131,8 +135,8 @@ update-ft-template-1.21.11/
 | `menu/FletchingTableMenu.java` | 制箭台容器逻辑（`AbstractContainerMenu`）：3 个斜向原料格 + 1 个产物格 + 玩家背包（坐标与 `ft_gui.png` 一一对应）；监听原料容器变化重算产物；产物格自定义 `onTake` 消耗原料、`tryRemove` 强制整份取走；`quickMoveStack` 支持 Shift 点击；`removed()` 用 `clearContainer` 把原料放回背包。 |
 | `recipe/FletchingRecipe.java` | 单个制箭台配方：3 个 `Ingredient` + 产物，`matches()` 做无序匹配（三格中任意摆放都算）。 |
 | `recipe/FletchingRecipes.java` | 配方表（写死在代码里）：箭头材料 + 木棍 + 羽毛 → 对应箭矢，`findResult()` 返回当前三格原料匹配到的产物。 |
-| `client/UpdateFtClient.java` | **客户端入口**（`ClientModInitializer`）。调用 `MenuScreens.register` 把 `MenuType` 与 `FletchingTableScreen` 绑定。 |
-| `client/FletchingTableScreen.java` | 界面渲染：176×166 布局，背景用 `update-ft:textures/gui/ft_gui.png`（从 256×256 画布的 (0,0) 取 176×166）；`init()` 里把标题居中；`render()` 末尾手动调 `renderTooltip`（1.21.11 的父类已不再自动调用）。 |
+| `client/UpdateFtClient.java`（`src/client/java`） | **客户端入口**（`ClientModInitializer`）。调用 `MenuScreens.register` 把 `MenuType` 与 `FletchingTableScreen` 绑定。 |
+| `client/FletchingTableScreen.java`（`src/client/java`） | 界面渲染：176×166 布局，背景用 `update-ft:textures/gui/ft_gui.png`（从 256×256 画布的 (0,0) 取 176×166）；`init()` 里把标题居中；`render()` 末尾手动调 `renderTooltip`（1.21.11 的父类已不再自动调用）。 |
 | `mixin/AbstractArrowMixin.java` | 箭矢行为的核心 Mixin：① `@ModifyArg` 改 `onHitEntity` 里 `Entity.hurtOrSimulate(DamageSource, float)` 的伤害参数，加上 `damageBonus`；② `onHitBlock` 头部注入，按 `effect` 分派——TNT 箭爆炸并移除，红石箭先做 `TRIGGER_BLOCK` 触发、再在命中面放隐形脉冲方块通电（不取消原版逻辑，箭会照常插进方块）；③ `onHitEntity` 在所有 return 处注入，TNT 箭命中实体时爆炸并移除。所有爆炸、放方块与移除都只在服务端执行，客户端交回原版逻辑，由服务端包同步。 |
 | `mixin/ExampleMixin.java` | Fabric 模板自带的示例 Mixin（对 `MinecraftServer.loadLevel` 的空注入），**不产生任何效果**，可安全删除（同时从 `update-ft.mixins.json` 的 `mixins` 数组里去掉）。 |
 

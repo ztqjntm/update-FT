@@ -11,6 +11,19 @@ repositories {
 	// for more information about repositories.
 }
 
+loom {
+	// 把客户端代码拆到 src/client，main 源集拿不到任何客户端专用类，
+	// 这样服务端误用客户端 API 会直接编译报错。
+	splitEnvironmentSourceSets()
+
+	mods {
+		"update-ft" {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.client
+		}
+	}
+}
+
 dependencies {
 	// To change the versions see the gradle.properties file
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
