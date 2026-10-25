@@ -6,14 +6,14 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
+import ztqjntm.update.UpdateFt;
 import ztqjntm.update.menu.FletchingTableMenu;
 
 public class FletchingTableScreen extends AbstractContainerScreen<FletchingTableMenu> {
-	// TODO 临时占位：先借用原版工作台的背景图，后续换成自己画的正式 UI。
-	// 工作台的 3x3 网格在 (30, 17)，所以槽位坐标要和 CraftingMenu 保持一致（见 FletchingTableMenu）。
-	// 右侧 (124, 35) 的输出格只是背景上画出来的，本模组还没有结果槽。
+	// 制箭台自己的贴图：256×256 的画布，176×166 的面板画在左上角 (0,0)。
+	// 原料格 / 产物格 / 背包的坐标都在 FletchingTableMenu 里，改贴图时两边要一起改。
 	private static final Identifier CONTAINER_TEXTURE =
-			Identifier.withDefaultNamespace("textures/gui/container/crafting_table.png");
+			Identifier.fromNamespaceAndPath(UpdateFt.MOD_ID, "textures/gui/ft_gui.png");
 
 	public FletchingTableScreen(FletchingTableMenu menu, Inventory inventory, Component title) {
 		super(menu, inventory, title);

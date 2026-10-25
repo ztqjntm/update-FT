@@ -70,7 +70,7 @@ public class UpdateFt implements ModInitializer {
 				@Override
 				public AbstractContainerMenu createMenu(int containerId, Inventory inventory, Player p) {
 					return new FletchingTableMenu(containerId, inventory,
-							new SimpleContainer(FletchingTableMenu.CONTAINER_SIZE));
+							new SimpleContainer(FletchingTableMenu.INPUT_SIZE));
 				}
 			});
 

@@ -45,9 +45,31 @@
 
 ### 2. 制箭台界面
 
-- 主手右键制箭台即可打开 9 格（3×3）界面。背景目前**临时借用原版工作台的贴图**（`textures/gui/container/crafting_table.png`），是占位方案，后续会换成自绘 UI；因此背景右侧那个输出格只是画出来的，没有对应的结果槽。
-- 不依赖方块实体：容器是每次打开时临时创建的 `SimpleContainer`，**不持久化**；关闭界面时把格内物品丢回给玩家（只在服务端执行，避免客户端刷出幽灵掉落物）。
-- 目前**没有任何合成/配方逻辑**，本质上是一个「关掉会吐东西」的 9 格临时箱子。
+按 `ft-gui-coords` 的设计实现。贴图 `textures/gui/ft_gui.png`（256×256 画布，176×166 的面板画在左上角），界面上共 **40** 个可放物品的位置：
+
+- **3 个原料格**：斜向排布 `(66,17)` / `(48,35)` / `(30,53)`，摆放顺序无所谓（配方是无形的）；
+- **1 个产物格**：`(124,35)`，底图是 24×24 的大框、16×16 物品居中，只能取不能放；
+- **玩家背包 3×9 + 快捷栏**：`x = 8 + 18c`，`y = 84 / 102 / 120 / 142`。
+
+**合成规则**：箭头材料 + 木棍 + 羽毛 → 对应箭矢。配方写死在 `FletchingRecipes` 里：
+
+| 箭头材料 | 产物 | 每次产出 |
+| --- | --- | --- |
+| 燧石 | 原版箭 | 4 |
+| 圆石 | 石箭 | 4 |
+| 铜锭 | 铜箭 | 4 |
+| 铁锭 | 铁箭 | 4 |
+| 金锭 | 金箭 | 4 |
+| 钻石 | 钻石箭 | 4 |
+| 下界合金锭 | 下界合金箭 | 4 |
+| 火药 | TNT 箭 | 2 |
+| 红石 | 红石箭 | 4 |
+| 末影珍珠 | 珍珠箭 | 2 |
+
+- 不依赖方块实体：三个原料格是每次打开时临时创建的 `SimpleContainer`，**不持久化**。
+- **关界面时和工作台一致**：原料优先塞回玩家背包，只有背包满了才掉在地上（走 `AbstractContainerMenu.clearContainer`）；产物格只是预览，关闭时直接清空，不会掉出来。
+- 产物一次只能**整份**取走（右键也只拿整份），避免“只拿 1 个却消耗一整套原料”。
+- 配方没有配方书支持，玩家需要自己试（后续可以接数据包）。
 
 ## 构建
 
@@ -106,9 +128,11 @@ update-ft-template-1.21.11/
 | `item/ModItems.java` | 8 种箭的注册表。`register()` 用 `Item.Properties.setId(ResourceKey)` 绑定 ID 后注册进 `BuiltInRegistries.ITEM`；`initialize()` 把 8 种箭加入创造模式「战斗」页签。数值（伤害加成、是否爆炸）与悬停介绍的语言键都写在这个文件里。 |
 | `item/ModArrowItem.java` | 自定义箭物品类，继承 `ArrowItem`，多三个字段：`damageBonus`（伤害加成）、`effect`（命中效果枚举 `NONE` / `EXPLOSIVE` / `REDSTONE`）供 Mixin 读取，`descriptionKeys`（悬停介绍的语言键列表）。覆写的 `appendHoverText` 会把每个键渲染成一行灰色小字。 |
 | `menu/ModMenuTypes.java` | 注册 `MenuType<FletchingTableMenu>`，ID 为 `update-ft:fletching_table`；客户端用它来决定打开哪个 `Screen`，服务端用它来反序列化菜单。 |
-| `menu/FletchingTableMenu.java` | 制箭台容器逻辑（`AbstractContainerMenu`）：创建 3×3 槽位（对齐工作台背景，起始 30/17）与玩家背包（8/84）；实现 `quickMoveStack`（Shift 点击搬运）、`stillValid`；`removed()` 在服务端把剩余物品丢回玩家。 |
+| `menu/FletchingTableMenu.java` | 制箭台容器逻辑（`AbstractContainerMenu`）：3 个斜向原料格 + 1 个产物格 + 玩家背包（坐标与 `ft_gui.png` 一一对应）；监听原料容器变化重算产物；产物格自定义 `onTake` 消耗原料、`tryRemove` 强制整份取走；`quickMoveStack` 支持 Shift 点击；`removed()` 用 `clearContainer` 把原料放回背包。 |
+| `recipe/FletchingRecipe.java` | 单个制箭台配方：3 个 `Ingredient` + 产物，`matches()` 做无序匹配（三格中任意摆放都算）。 |
+| `recipe/FletchingRecipes.java` | 配方表（写死在代码里）：箭头材料 + 木棍 + 羽毛 → 对应箭矢，`findResult()` 返回当前三格原料匹配到的产物。 |
 | `client/UpdateFtClient.java` | **客户端入口**（`ClientModInitializer`）。调用 `MenuScreens.register` 把 `MenuType` 与 `FletchingTableScreen` 绑定。 |
-| `client/FletchingTableScreen.java` | 界面渲染：176×166 布局，背景**暂时**借用 `textures/gui/container/crafting_table.png`（工作台贴图，占位用，换自绘 UI 只改 `CONTAINER_TEXTURE` 常量即可）；`init()` 里把标题居中；`render()` 末尾手动调 `renderTooltip`（1.21.11 的父类已不再自动调用）。 |
+| `client/FletchingTableScreen.java` | 界面渲染：176×166 布局，背景用 `update-ft:textures/gui/ft_gui.png`（从 256×256 画布的 (0,0) 取 176×166）；`init()` 里把标题居中；`render()` 末尾手动调 `renderTooltip`（1.21.11 的父类已不再自动调用）。 |
 | `mixin/AbstractArrowMixin.java` | 箭矢行为的核心 Mixin：① `@ModifyArg` 改 `onHitEntity` 里 `Entity.hurtOrSimulate(DamageSource, float)` 的伤害参数，加上 `damageBonus`；② `onHitBlock` 头部注入，按 `effect` 分派——TNT 箭爆炸并移除，红石箭先做 `TRIGGER_BLOCK` 触发、再在命中面放隐形脉冲方块通电（不取消原版逻辑，箭会照常插进方块）；③ `onHitEntity` 在所有 return 处注入，TNT 箭命中实体时爆炸并移除。所有爆炸、放方块与移除都只在服务端执行，客户端交回原版逻辑，由服务端包同步。 |
 | `mixin/ExampleMixin.java` | Fabric 模板自带的示例 Mixin（对 `MinecraftServer.loadLevel` 的空注入），**不产生任何效果**，可安全删除（同时从 `update-ft.mixins.json` 的 `mixins` 数组里去掉）。 |
 
@@ -121,25 +145,26 @@ update-ft-template-1.21.11/
 | `assets/update-ft/icon.png` | 模组列表里显示的图标（128×128）。 |
 | `assets/update-ft/items/*.json` | **物品定义**（1.21.4+ 的新格式）：每个文件指定该物品用哪个模型，例如 `{"model": {"type": "minecraft:model", "model": "update-ft:item/stone_arrow"}}`。8 个物品各一份。 |
 | `assets/update-ft/models/item/*.json` | **物品模型**：`parent` 为 `minecraft:item/generated`，`layer0` 指向对应贴图。8 个物品各一份。 |
-| `assets/update-ft/textures/item/*.png` | **物品贴图**，16×16，8 种箭各一张，文件名与物品 ID 一致。 |
+| `assets/update-ft/textures/item/*.png` | **物品贴图**，16×16，9 种箭各一张，文件名与物品 ID 一致。 |
+| `assets/update-ft/textures/gui/ft_gui.png` | **制箭台界面贴图**，256×256 画布、面板画在 (0,0) 的 176×166 区域；来自 `ft-gui-coords` 的设计稿，已清掉三格下方的 1px 描边残留。 |
 | `assets/update-ft/lang/zh_cn.json` | 简体中文文本：8 个 `item.update-ft.*` 物品名、`container.update-ft.fletching_table`（界面标题），以及 17 条 `tooltip.update-ft.*` 悬停介绍（每行一个键）。 |
 | `assets/update-ft/lang/en_us.json` | 英文文本，键名与中文文件一一对应。 |
 | `data/minecraft/tags/item/arrows.json` | 把 8 种箭并入原版 `minecraft:arrows` 物品标签，显式写了 `"replace": false`（与默认行为一致，即**合并**而非覆盖），这样弓、弩、发射器都会把它们当作合法弹药。 |
 
-> 新增一种箭需要同时改：`ModItems`（注册 + 悬停介绍键）、`items/`、`models/item/`、`textures/item/`（三份资源同名）、`lang` 两个语言文件（物品名与 `tooltip.update-ft.<id>.N` 介绍行）、`data/minecraft/tags/item/arrows.json`。
+> 新增一种箭需要同时改：`ModItems`（注册 + 悬停介绍键）、`items/`、`models/item/`、`textures/item/`（三份资源同名）、`lang` 两个语言文件（物品名与 `tooltip.update-ft.<id>.N` 介绍行）、`data/minecraft/tags/item/arrows.json`，想让它能合成还要在 `FletchingRecipes` 里加一行。
 
 ## 关键流程
 
 **注册**：`UpdateFt.onInitialize()` → `ModItems.initialize()`（触发静态字段注册物品、加入创造页签）→ `ModMenuTypes.initialize()`（触发 `MenuType` 注册）→ 注册右键事件。客户端 `UpdateFtClient.onInitializeClient()` → 绑定 `MenuType` 与 `Screen`。
 
-**开界面**：主手右键制箭台 → 服务端 `UseBlockCallback` 返回 `SUCCESS` 并 `openMenu` → 服务端创建 `FletchingTableMenu` + `SimpleContainer(9)` → 发送 `ClientboundOpenScreenPacket` → 客户端用 `MenuType` 新建菜单与 `FletchingTableScreen`，槽位内容由 `AbstractContainerMenu` 自动同步 → 关闭时服务端 `removed()` 把物品丢回玩家。
+**开界面与合成**：主手右键制箭台 → 服务端 `UseBlockCallback` 返回 `SUCCESS` 并 `openMenu` → 服务端创建 `FletchingTableMenu` + `SimpleContainer(3)` → 发送 `ClientboundOpenScreenPacket` → 客户端用 `MenuType` 新建菜单与 `FletchingTableScreen`，槽位内容由 `AbstractContainerMenu` 自动同步 → 放入三样原料后 `slotsChanged` 调用 `FletchingRecipes.findResult()` 把产物写进产物格 → 取走产物时消耗每个原料 1 个 → 关闭时 `clearContainer` 把原料放回背包。
 
 **射击命中**：弓/弩/发射器发射 → `ArrowItem.createArrow()` 生成 `Arrow` 实体（`pickupItemStack` 即本模组的箭）→ `AbstractArrowMixin` 通过 `getPickupItemStackOrigin()` 认出箭的类型 → 命中实体时加算伤害、TNT 箭额外爆炸；命中方块时 TNT 箭爆炸并移除，红石箭则以命中点为中心激发一次 `TRIGGER_BLOCK` 爆炸（只触发方块，不破坏、不伤人）后照常插进方块。
 
 ## 已知限制 / TODO
 
-- **没有任何配方**：8 种箭在生存模式无法获得，只能从创造模式拿。
-- **制箭台没有合成逻辑**：界面只是个 9 格临时容器，关掉就把东西丢出来。
+- **配方只在制箭台里生效**：普通工作台没有任何本模组的配方，生存模式想造这些箭必须用制箭台。
+- **配方写死在代码里**：暂不支持数据包/配方书，改配方要动 `FletchingRecipes.java`。
 - **红石箭**的脉冲半径固定为 2 格（只对按钮/拉杆/门这类“可触发”方块），真正通电只作用于**命中面相邻的那一格**；想让远处的红石灯亮，需要命中它本身或让红石粉把信号传导过去。
 - `update-ft:redstone_pulse` 是隐形、无碰撞、无掉落的临时方块，正常会在 8 tick 后自动消失；只有在服务器于这 8 tick 内崩溃时，才可能残留在世界里（重进后会看到它，可直接打掉）。
 - **TNT 箭会破坏方块**（按设计如此），在多人服相当于可无限使用的拆家工具，且近距离会伤到自己。
