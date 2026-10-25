@@ -77,8 +77,6 @@ public class UpdateFt implements ModInitializer {
 			// SUCCESS 阻断后续原版处理
 			return InteractionResult.SUCCESS;
 		});
-
-		LOGGER.info("Hello Fabric world!");
 	}
 
 	public static Identifier id(String path) {

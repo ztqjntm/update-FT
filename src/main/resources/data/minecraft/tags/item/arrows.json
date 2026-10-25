@@ -1,4 +1,5 @@
 {
+  "replace": false,
   "values": [
     "update-ft:stone_arrow",
     "update-ft:copper_arrow",

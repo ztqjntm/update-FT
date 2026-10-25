@@ -121,7 +121,7 @@ update-ft-template-1.21.11/
 | `assets/update-ft/textures/item/*.png` | **物品贴图**，16×16，8 种箭各一张，文件名与物品 ID 一致。 |
 | `assets/update-ft/lang/zh_cn.json` | 简体中文文本：8 个 `item.update-ft.*` 物品名、`container.update-ft.fletching_table`（界面标题），以及 17 条 `tooltip.update-ft.*` 悬停介绍（每行一个键）。 |
 | `assets/update-ft/lang/en_us.json` | 英文文本，键名与中文文件一一对应。 |
-| `data/minecraft/tags/item/arrows.json` | 把 8 种箭并入原版 `minecraft:arrows` 物品标签（默认是**合并**而非覆盖），这样弓、弩、发射器都会把它们当作合法弹药。 |
+| `data/minecraft/tags/item/arrows.json` | 把 8 种箭并入原版 `minecraft:arrows` 物品标签，显式写了 `"replace": false`（与默认行为一致，即**合并**而非覆盖），这样弓、弩、发射器都会把它们当作合法弹药。 |
 
 > 新增一种箭需要同时改：`ModItems`（注册 + 悬停介绍键）、`items/`、`models/item/`、`textures/item/`（三份资源同名）、`lang` 两个语言文件（物品名与 `tooltip.update-ft.<id>.N` 介绍行）、`data/minecraft/tags/item/arrows.json`。
 
