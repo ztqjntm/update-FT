@@ -211,7 +211,7 @@ public abstract class AbstractArrowMixin {
     }
 
     /**
-     * 珍珠箭：把射手传送到命中点，效果对齐原版末影珍珠（落点位置 + 5 点摔落伤害 + 传送音效/粒子）。
+     * 珍珠箭：把射手传送到命中点，效果参考原版末影珍珠（落点位置 + 3 点摔落伤害 + 传送音效/粒子）。
      * 只由服务端调用。
      */
     @Unique
@@ -231,8 +231,8 @@ public abstract class AbstractArrowMixin {
         Vec3 dest = this.updateft$findSafeDestination(level, owner, hit.subtract(offset));
 
         owner.teleportTo(level, dest.x, dest.y, dest.z, Set.of(), owner.getYRot(), owner.getXRot(), false);
-        // 和末影珍珠一样收 5 点摔落伤害
-        owner.hurtServer(level, level.damageSources().fall(), 5.0F);
+        // 收 3 点摔落伤害（原版末影珍珠是 5 点，这里稍微轻一些）
+        owner.hurtServer(level, level.damageSources().fall(), 3.0F);
 
         level.sendParticles(ParticleTypes.PORTAL, from.x, from.y, from.z, 32, 0.3D, 0.3D, 0.3D, 0.12D);
         level.sendParticles(ParticleTypes.PORTAL, dest.x, dest.y + 0.9D, dest.z, 48, 0.4D, 0.6D, 0.4D, 0.15D);

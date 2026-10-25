@@ -38,6 +38,6 @@
   "tooltip.update-ft.redstone_arrow.3": "Damage bonus: -1",
 
   "tooltip.update-ft.pearl_arrow.1": "An ender pearl set into the tip.",
-  "tooltip.update-ft.pearl_arrow.2": "You land wherever it hits, at the cost of 5 fall damage.",
+  "tooltip.update-ft.pearl_arrow.2": "You land wherever it hits, at the cost of 3 fall damage.",
   "tooltip.update-ft.pearl_arrow.3": "Damage bonus: ±0"
 }
