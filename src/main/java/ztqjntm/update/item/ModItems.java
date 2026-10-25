@@ -70,6 +70,13 @@ public class ModItems {
                     "tooltip.update-ft.redstone_arrow.3"),
             new Item.Properties());
 
+    public static final Item PEARL_ARROW = register("pearl_arrow",
+            props -> new ModArrowItem(props, 0, ModArrowItem.Effect.TELEPORT,
+                    "tooltip.update-ft.pearl_arrow.1",
+                    "tooltip.update-ft.pearl_arrow.2",
+                    "tooltip.update-ft.pearl_arrow.3"),
+            new Item.Properties());
+
     public static void initialize() {
         ItemGroupEvents.modifyEntriesEvent(CreativeModeTabs.COMBAT)
                 .register((itemGroup) -> {
@@ -81,6 +88,7 @@ public class ModItems {
                     itemGroup.accept(ModItems.NETHERITE_ARROW);
                     itemGroup.accept(ModItems.TNT_ARROW);
                     itemGroup.accept(ModItems.REDSTONE_ARROW);
+                    itemGroup.accept(ModItems.PEARL_ARROW);
                 });
     }
 }

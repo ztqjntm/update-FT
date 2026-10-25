@@ -7,6 +7,7 @@
   "item.update-ft.netherite_arrow": "Netherite Arrow",
   "item.update-ft.tnt_arrow": "TNT Arrow",
   "item.update-ft.redstone_arrow": "Redstone Arrow",
+  "item.update-ft.pearl_arrow": "Pearl Arrow",
   "container.update-ft.fletching_table": "Fletching Table",
   "block.update-ft.redstone_pulse": "Redstone Pulse",
 
@@ -34,5 +35,9 @@
 
   "tooltip.update-ft.redstone_arrow.1": "Crackles with redstone energy.",
   "tooltip.update-ft.redstone_arrow.2": "Powers the block it hits and triggers nearby buttons, levers and doors.",
-  "tooltip.update-ft.redstone_arrow.3": "Damage bonus: -1"
+  "tooltip.update-ft.redstone_arrow.3": "Damage bonus: -1",
+
+  "tooltip.update-ft.pearl_arrow.1": "An ender pearl set into the tip.",
+  "tooltip.update-ft.pearl_arrow.2": "You land wherever it hits, at the cost of 5 fall damage.",
+  "tooltip.update-ft.pearl_arrow.3": "Damage bonus: ±0"
 }

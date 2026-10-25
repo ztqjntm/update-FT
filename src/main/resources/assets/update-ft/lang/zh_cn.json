@@ -7,6 +7,7 @@
   "item.update-ft.netherite_arrow": "下界合金箭",
   "item.update-ft.tnt_arrow": "TNT箭",
   "item.update-ft.redstone_arrow": "红石箭",
+  "item.update-ft.pearl_arrow": "珍珠箭",
   "container.update-ft.fletching_table": "制箭台",
   "block.update-ft.redstone_pulse": "红石脉冲",
 
@@ -34,5 +35,9 @@
 
   "tooltip.update-ft.redstone_arrow.1": "红石箭头，命中时噼啪作响。",
   "tooltip.update-ft.redstone_arrow.2": "命中方块后给目标通电，并触发周围的按钮、拉杆与门。",
-  "tooltip.update-ft.redstone_arrow.3": "伤害加成：-1"
+  "tooltip.update-ft.redstone_arrow.3": "伤害加成：-1",
+
+  "tooltip.update-ft.pearl_arrow.1": "箭尖嵌着一颗末影珍珠。",
+  "tooltip.update-ft.pearl_arrow.2": "命中处就是你落下的地方，代价是 5 点摔落伤害。",
+  "tooltip.update-ft.pearl_arrow.3": "伤害加成：±0"
 }

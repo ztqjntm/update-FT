@@ -5,6 +5,7 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Explosion;
@@ -18,6 +19,7 @@ import net.minecraft.world.level.block.FenceGateBlock;
 import net.minecraft.world.level.block.LeverBlock;
 import net.minecraft.world.level.block.TrapDoorBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
@@ -32,6 +34,8 @@ import ztqjntm.update.NoEntityDamageCalculator;
 import ztqjntm.update.block.ModBlocks;
 import ztqjntm.update.block.RedstonePulseBlock;
 import ztqjntm.update.item.ModArrowItem;
+
+import java.util.Set;
 
 @Mixin(AbstractArrow.class)
 public abstract class AbstractArrowMixin {
@@ -79,6 +83,16 @@ public abstract class AbstractArrowMixin {
         if (effect == ModArrowItem.Effect.REDSTONE && !self.level().isClientSide()) {
             this.updateft$triggerRedstone(self, hitResult);
         }
+
+        // 珍珠箭：把射手传送到落点，箭本身消耗掉
+        if (effect == ModArrowItem.Effect.TELEPORT) {
+            if (self.level().isClientSide()) {
+                return;
+            }
+            this.updateft$teleportOwner(self, hitResult.getLocation());
+            self.discard();
+            ci.cancel();
+        }
     }
 
     // 用 RETURN 而不是 TAIL：onHitEntity 里有多个 return（末影人、未造成伤害等提前返回），
@@ -86,15 +100,23 @@ public abstract class AbstractArrowMixin {
     @Inject(method = "onHitEntity", at = @At("RETURN"))
     private void updateft$onHitEntity(EntityHitResult hitResult, CallbackInfo ci) {
         ModArrowItem arrow = this.updateft$getArrowItem();
+        if (arrow == null) {
+            return;
+        }
+        ModArrowItem.Effect effect = arrow.getEffect();
         // 红石箭只在命中方块时触发，打中实体只算普通伤害
-        if (arrow == null || arrow.getEffect() != ModArrowItem.Effect.EXPLOSIVE) {
+        if (effect != ModArrowItem.Effect.EXPLOSIVE && effect != ModArrowItem.Effect.TELEPORT) {
             return;
         }
         AbstractArrow self = (AbstractArrow) (Object) this;
         if (self.level().isClientSide()) {
             return;
         }
-        this.updateft$explode(self, hitResult.getLocation());
+        if (effect == ModArrowItem.Effect.EXPLOSIVE) {
+            this.updateft$explode(self, hitResult.getLocation());
+        } else {
+            this.updateft$teleportOwner(self, hitResult.getLocation());
+        }
         self.discard();
     }
 
@@ -186,5 +208,47 @@ public abstract class AbstractArrowMixin {
                 || block instanceof FenceGateBlock
                 || block instanceof TrapDoorBlock
                 || block instanceof BellBlock;
+    }
+
+    /**
+     * 珍珠箭：把射手传送到命中点，效果对齐原版末影珍珠（落点位置 + 5 点摔落伤害 + 传送音效/粒子）。
+     * 只由服务端调用。
+     */
+    @Unique
+    private void updateft$teleportOwner(AbstractArrow self, Vec3 hit) {
+        if (!(self.level() instanceof ServerLevel level)) {
+            return;
+        }
+        Entity owner = self.getOwner();
+        if (owner == null || owner.isRemoved()) {
+            return;
+        }
+
+        Vec3 from = self.position();
+        // 往箭飞来的方向退半格，避免整个人嵌进被打中的墙里
+        Vec3 motion = self.getDeltaMovement();
+        Vec3 offset = motion.lengthSqr() > 1.0E-7D ? motion.normalize().scale(0.6D) : Vec3.ZERO;
+        Vec3 dest = this.updateft$findSafeDestination(level, owner, hit.subtract(offset));
+
+        owner.teleportTo(level, dest.x, dest.y, dest.z, Set.of(), owner.getYRot(), owner.getXRot(), false);
+        // 和末影珍珠一样收 5 点摔落伤害
+        owner.hurtServer(level, level.damageSources().fall(), 5.0F);
+
+        level.sendParticles(ParticleTypes.PORTAL, from.x, from.y, from.z, 32, 0.3D, 0.3D, 0.3D, 0.12D);
+        level.sendParticles(ParticleTypes.PORTAL, dest.x, dest.y + 0.9D, dest.z, 48, 0.4D, 0.6D, 0.4D, 0.15D);
+        level.playSound(null, dest.x, dest.y, dest.z, SoundEvents.PLAYER_TELEPORT, SoundSource.PLAYERS, 1.0F, 1.0F);
+    }
+
+    /** 从上往下找一个不会卡住实体的落点，最多向上挪 3 格 */
+    @Unique
+    private Vec3 updateft$findSafeDestination(ServerLevel level, Entity entity, Vec3 base) {
+        for (int dy = 0; dy <= 3; dy++) {
+            Vec3 candidate = base.add(0.0D, dy, 0.0D);
+            AABB box = entity.getBoundingBox().move(candidate.subtract(entity.position()));
+            if (level.noCollision(entity, box)) {
+                return candidate;
+            }
+        }
+        return base.add(0.0D, 1.0D, 0.0D);
     }
 }

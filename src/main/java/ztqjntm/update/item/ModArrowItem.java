@@ -19,7 +19,9 @@ public class ModArrowItem extends ArrowItem {
         /** 命中方块或实体时爆炸（TNT 箭） */
         EXPLOSIVE,
         /** 命中方块时激发一次红石脉冲（红石箭） */
-        REDSTONE
+        REDSTONE,
+        /** 命中后把射手传送到落点（珍珠箭） */
+        TELEPORT
     }
 
     private final int damageBonus;
