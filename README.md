@@ -113,7 +113,7 @@ update-ft-template-1.21.11/
 | `gradlew`、`gradlew.bat` | Gradle Wrapper 启动脚本（Linux/macOS 与 Windows），保证不装 Gradle 也能构建。 |
 | `gradle/wrapper/gradle-wrapper.jar` | Wrapper 引导程序本体。 |
 | `gradle/wrapper/gradle-wrapper.properties` | 指定 Gradle 版本（9.7.1）与下载地址，当前指向腾讯云镜像，官方地址被注释掉；换网络环境时改这里。 |
-| `.github/workflows/build.yml` | CI：push / PR 时用 JDK 25 跑 `./gradlew build`，把 `build/libs/` 上传为构建产物。 |
+| `.github/workflows/build.yml` | CI：push / PR 时用 JDK 21 跑 `./gradlew build`，把 `build/libs/` 上传为构建产物。 |
 | `.gitignore` | 忽略 `build/`、`.gradle/`、IDE 配置等。 |
 | `.gitattributes` | 统一换行符，避免 Windows 下 `gradlew` 被改成 CRLF 而无法执行。 |
 | `LICENSE` | Mozilla Public License 2.0 全文，构建时会被复制进 jar。 |
