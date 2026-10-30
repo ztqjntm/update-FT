@@ -7,9 +7,11 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import ztqjntm.update.recipe.FletchingRecipes;
 
 import java.util.Optional;
+import java.util.function.Predicate;
 
 /**
  * 制箭台界面。
@@ -42,10 +44,14 @@ public class FletchingTableMenu extends AbstractContainerMenu {
 		this.result = new SimpleContainer(1);
 		container.startOpen(playerInventory.player);
 
-		// 原料格：斜向 18px 步进（右上 → 中间 → 左下）
-		this.addSlot(new Slot(container, 0, 66, 17));
-		this.addSlot(new Slot(container, 1, 48, 35));
-		this.addSlot(new Slot(container, 2, 30, 53));
+		// 原料格：斜向 18px 步进（右上 → 中间 → 左下），栏位是固定的：
+		// 右上放箭头材料、中间只放木棍、左下只放羽毛
+		this.addSlot(new InputSlot(container, FletchingRecipes.TIP_SLOT, 66, 17,
+				FletchingRecipes::isTipMaterial));
+		this.addSlot(new InputSlot(container, FletchingRecipes.SHAFT_SLOT, 48, 35,
+				stack -> stack.is(Items.STICK)));
+		this.addSlot(new InputSlot(container, FletchingRecipes.FLETCHING_SLOT, 30, 53,
+				stack -> stack.is(Items.FEATHER)));
 
 		// 产物格：底图是 24×24 的大框，16×16 物品居中
 		this.addSlot(new FletchingResultSlot(this.result, 0, 124, 35));
@@ -74,6 +80,35 @@ public class FletchingTableMenu extends AbstractContainerMenu {
 
 	private void updateResult() {
 		this.result.setItem(0, FletchingRecipes.findResult(this.input));
+	}
+
+	/** 物品该进哪个原料格；返回 -1 表示三个格子都不收 */
+	private static int inputSlotFor(ItemStack stack) {
+		if (stack.is(Items.STICK)) {
+			return FletchingRecipes.SHAFT_SLOT;
+		}
+		if (stack.is(Items.FEATHER)) {
+			return FletchingRecipes.FLETCHING_SLOT;
+		}
+		if (FletchingRecipes.isTipMaterial(stack)) {
+			return FletchingRecipes.TIP_SLOT;
+		}
+		return -1;
+	}
+
+	/** 原料格：只接受自己那一种东西（栏位限定），放错位置直接放不进去 */
+	private static final class InputSlot extends Slot {
+		private final Predicate<ItemStack> filter;
+
+		private InputSlot(Container container, int slot, int x, int y, Predicate<ItemStack> filter) {
+			super(container, slot, x, y);
+			this.filter = filter;
+		}
+
+		@Override
+		public boolean mayPlace(ItemStack stack) {
+			return this.filter.test(stack);
+		}
 	}
 
 	/** 产物格：不能放东西，取走时消耗三个原料各 1 个 */
@@ -131,8 +166,11 @@ public class FletchingTableMenu extends AbstractContainerMenu {
 				return ItemStack.EMPTY;
 			}
 		} else {
-			// 背包 → 原料格
-			if (!this.moveItemStackTo(stack, 0, INPUT_SIZE, false)) {
+			// 背包 → 原料格：按物品类型放进对应格子。
+			// 类型不对、或目标格已有别的东西时什么都不做，不要“退而求其次”塞到别的格子，
+			// 否则落点又会变得不可预期。
+			int target = inputSlotFor(stack);
+			if (target < 0 || !this.moveItemStackTo(stack, target, target + 1, false)) {
 				return ItemStack.EMPTY;
 			}
 		}

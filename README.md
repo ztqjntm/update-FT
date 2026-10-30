@@ -45,9 +45,9 @@
 
 ### 2. 制箭台界面
 
-按 `ft-gui-coords` 的设计实现。贴图 `textures/gui/ft_gui.png`（256×256 画布，176×166 的面板画在左上角），界面上共 **40** 个可放物品的位置：
+贴图 `textures/gui/ft_gui.png`（256×256 画布，176×166 的面板画在左上角），界面上共 **40** 个可放物品的位置：
 
-- **3 个原料格**：斜向排布 `(66,17)` / `(48,35)` / `(30,53)`，摆放顺序无所谓（配方是无形的）；
+- **3 个原料格**：斜向排布 `(66,17)` / `(48,35)` / `(30,53)`，**栏位固定、不能乱放**——右上只收箭头材料、中间只收木棍、左下只收羽毛，放错的物品根本放不进去；shift 点击会按物品类型自动落进对应格，塞不进去就原地不动（不会退而求其次塞别的格）；
 - **1 个产物格**：`(124,35)`，底图是 24×24 的大框、16×16 物品居中，只能取不能放；
 - **玩家背包 3×9 + 快捷栏**：`x = 8 + 18c`，`y = 84 / 102 / 120 / 142`。
 
@@ -132,9 +132,9 @@ update-ft-template-1.21.11/
 | `item/ModItems.java` | 8 种箭的注册表。`register()` 用 `Item.Properties.setId(ResourceKey)` 绑定 ID 后注册进 `BuiltInRegistries.ITEM`；`initialize()` 把 8 种箭加入创造模式「战斗」页签。数值（伤害加成、是否爆炸）与悬停介绍的语言键都写在这个文件里。 |
 | `item/ModArrowItem.java` | 自定义箭物品类，继承 `ArrowItem`，多三个字段：`damageBonus`（伤害加成）、`effect`（命中效果枚举 `NONE` / `EXPLOSIVE` / `REDSTONE`）供 Mixin 读取，`descriptionKeys`（悬停介绍的语言键列表）。覆写的 `appendHoverText` 会把每个键渲染成一行灰色小字。 |
 | `menu/ModMenuTypes.java` | 注册 `MenuType<FletchingTableMenu>`，ID 为 `update-ft:fletching_table`；客户端用它来决定打开哪个 `Screen`，服务端用它来反序列化菜单。 |
-| `menu/FletchingTableMenu.java` | 制箭台容器逻辑（`AbstractContainerMenu`）：3 个斜向原料格 + 1 个产物格 + 玩家背包（坐标与 `ft_gui.png` 一一对应）；监听原料容器变化重算产物；产物格自定义 `onTake` 消耗原料、`tryRemove` 强制整份取走；`quickMoveStack` 支持 Shift 点击；`removed()` 用 `clearContainer` 把原料放回背包。 |
-| `recipe/FletchingRecipe.java` | 单个制箭台配方：3 个 `Ingredient` + 产物，`matches()` 做无序匹配（三格中任意摆放都算）。 |
-| `recipe/FletchingRecipes.java` | 配方表（写死在代码里）：箭头材料 + 木棍 + 羽毛 → 对应箭矢，`findResult()` 返回当前三格原料匹配到的产物。 |
+| `menu/FletchingTableMenu.java` | 制箭台容器逻辑（`AbstractContainerMenu`）：3 个斜向原料格（`InputSlot` 用 `mayPlace` 做栏位限定）+ 1 个产物格 + 玩家背包（坐标与 `ft_gui.png` 一一对应）；监听原料容器变化重算产物；产物格自定义 `onTake` 消耗原料、`tryRemove` 强制整份取走；`quickMoveStack` 按物品类型把 Shift 点击的物品路由到对应原料格；`removed()` 用 `clearContainer` 把原料放回背包。 |
+| `recipe/FletchingRecipe.java` | 单个制箭台配方：只保存**箭头材料**的 `Ingredient` 与产物（木棍、羽毛是固定栏位，不必重复写），`matchesTip()` 判断某物品能不能当这种箭的箭头。 |
+| `recipe/FletchingRecipes.java` | 配方表（写死在代码里）与栏位定义：`TIP_SLOT`/`SHAFT_SLOT`/`FLETCHING_SLOT` 三个常量对应界面右上/中间/左下；`findResult()` 先校验中间是木棍、左下是羽毛，再按右上的材料查产物；`isTipMaterial()` 给箭头格做 `mayPlace` 过滤。 |
 | `client/UpdateFtClient.java`（`src/client/java`） | **客户端入口**（`ClientModInitializer`）。调用 `MenuScreens.register` 把 `MenuType` 与 `FletchingTableScreen` 绑定。 |
 | `client/FletchingTableScreen.java`（`src/client/java`） | 界面渲染：176×166 布局，背景用 `update-ft:textures/gui/ft_gui.png`（从 256×256 画布的 (0,0) 取 176×166）；`init()` 里把标题居中；`render()` 末尾手动调 `renderTooltip`（1.21.11 的父类已不再自动调用）。 |
 | `mixin/AbstractArrowMixin.java` | 箭矢行为的核心 Mixin：① `@ModifyArg` 改 `onHitEntity` 里 `Entity.hurtOrSimulate(DamageSource, float)` 的伤害参数，加上 `damageBonus`；② `onHitBlock` 头部注入，按 `effect` 分派——TNT 箭爆炸并移除，红石箭先做 `TRIGGER_BLOCK` 触发、再在命中面放隐形脉冲方块通电（不取消原版逻辑，箭会照常插进方块）；③ `onHitEntity` 在所有 return 处注入，TNT 箭命中实体时爆炸并移除。所有爆炸、放方块与移除都只在服务端执行，客户端交回原版逻辑，由服务端包同步。 |
@@ -150,7 +150,7 @@ update-ft-template-1.21.11/
 | `assets/update-ft/items/*.json` | **物品定义**（1.21.4+ 的新格式）：每个文件指定该物品用哪个模型，例如 `{"model": {"type": "minecraft:model", "model": "update-ft:item/stone_arrow"}}`。8 个物品各一份。 |
 | `assets/update-ft/models/item/*.json` | **物品模型**：`parent` 为 `minecraft:item/generated`，`layer0` 指向对应贴图。8 个物品各一份。 |
 | `assets/update-ft/textures/item/*.png` | **物品贴图**，16×16，9 种箭各一张，文件名与物品 ID 一致。 |
-| `assets/update-ft/textures/gui/ft_gui.png` | **制箭台界面贴图**，256×256 画布、面板画在 (0,0) 的 176×166 区域；来自 `ft-gui-coords` 的设计稿，已清掉三格下方的 1px 描边残留。 |
+| `assets/update-ft/textures/gui/ft_gui.png` | **制箭台界面贴图**，256×256 画布、面板画在 (0,0) 的 176×166 区域；设计稿的坐标表与标注图可在 git 历史（提交 `627e937`）里找到，贴图已清掉三格下方的 1px 描边残留。 |
 | `assets/update-ft/lang/zh_cn.json` | 简体中文文本：8 个 `item.update-ft.*` 物品名、`container.update-ft.fletching_table`（界面标题），以及 17 条 `tooltip.update-ft.*` 悬停介绍（每行一个键）。 |
 | `assets/update-ft/lang/en_us.json` | 英文文本，键名与中文文件一一对应。 |
 | `data/minecraft/tags/item/arrows.json` | 把 8 种箭并入原版 `minecraft:arrows` 物品标签，显式写了 `"replace": false`（与默认行为一致，即**合并**而非覆盖），这样弓、弩、发射器都会把它们当作合法弹药。 |

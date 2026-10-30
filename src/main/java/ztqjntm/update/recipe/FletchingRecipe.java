@@ -1,22 +1,20 @@
 package ztqjntm.update.recipe;
 
-import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 
-import java.util.List;
-
 /**
- * 制箭台配方：3 个原料 → 1 份产物。
+ * 一个制箭台配方：**箭头材料**固定放在 C1（右上），C2（中间）恒为木棍、C3（左下）恒为羽毛。
  * <p>
- * 原料不区分摆放位置——三个格子的斜向排布只是视觉设计，玩家把三样东西放进去就行。
+ * 因为栏位是固定的，配方里只需要描述“什么材料能做箭头”，
+ * 木棍和羽毛由 {@link FletchingRecipes#findResult} 直接校验，不必重复写进每条配方。
  */
 public class FletchingRecipe {
-    private final List<Ingredient> ingredients;
+    private final Ingredient tip;
     private final ItemStack result;
 
-    public FletchingRecipe(ItemStack result, Ingredient... ingredients) {
-        this.ingredients = List.of(ingredients);
+    public FletchingRecipe(ItemStack result, Ingredient tip) {
+        this.tip = tip;
         this.result = result;
     }
 
@@ -25,24 +23,8 @@ public class FletchingRecipe {
         return this.result.copy();
     }
 
-    public boolean matches(Container input) {
-        if (this.ingredients.size() != input.getContainerSize()) {
-            return false;
-        }
-        boolean[] used = new boolean[this.ingredients.size()];
-        for (Ingredient ingredient : this.ingredients) {
-            boolean found = false;
-            for (int i = 0; i < used.length; i++) {
-                if (!used[i] && ingredient.test(input.getItem(i))) {
-                    used[i] = true;
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                return false;
-            }
-        }
-        return true;
+    /** 这个物品能不能当这种箭的箭头 */
+    public boolean matchesTip(ItemStack stack) {
+        return this.tip.test(stack);
     }
 }
