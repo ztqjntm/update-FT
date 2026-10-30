@@ -36,7 +36,7 @@ public final class FletchingRecipes {
             new FletchingRecipe(new ItemStack(ModItems.DIAMOND_ARROW, 4), Ingredient.of(Items.DIAMOND)),
             new FletchingRecipe(new ItemStack(ModItems.NETHERITE_ARROW, 4), Ingredient.of(Items.NETHERITE_INGOT)),
             // 爆炸/功能箭：产出少一些
-            new FletchingRecipe(new ItemStack(ModItems.TNT_ARROW, 2), Ingredient.of(Items.GUNPOWDER)),
+            new FletchingRecipe(new ItemStack(ModItems.TNT_ARROW, 1), Ingredient.of(Items.TNT)),
             new FletchingRecipe(new ItemStack(ModItems.REDSTONE_ARROW, 4), Ingredient.of(Items.REDSTONE)),
             new FletchingRecipe(new ItemStack(ModItems.PEARL_ARROW, 2), Ingredient.of(Items.ENDER_PEARL))
     );
