@@ -108,7 +108,7 @@ update-ft-template-1.21.11/
 | 文件 | 作用 |
 | --- | --- |
 | `build.gradle` | 应用 `net.fabricmc.fabric-loom-remap` 插件，声明 Minecraft / Fabric Loader / Fabric API 依赖、Java 21 编译目标；`loom { splitEnvironmentSourceSets() }` 把 `main` / `client` 拆成两个源集（`mods { }` 里同时声明两者），`processResources` 把 `fabric.mod.json` 里的 `${version}` 展开成真实版本号，`jar` 任务把 `LICENSE` 一并打进包里。 |
-| `gradle.properties` | 所有版本号的唯一来源：`minecraft_version=1.21.11`、`loader_version=0.19.5`、`loom_version=1.15-SNAPSHOT`、`fabric_api_version`、`version`（模组版本）、`group`（包名前缀）。JVM 内存与并行/配置缓存开关也在这里。 |
+| `gradle.properties` | 所有版本号的唯一来源：`minecraft_version=1.21.11`、`loader_version=0.19.5`、`loom_version=1.15.5`（已锁定 release 版本）、`fabric_api_version`、`version`（模组版本）、`group`（包名前缀）。JVM 内存与并行/配置缓存开关也在这里。 |
 | `settings.gradle` | 声明 Fabric Maven / Maven Central / Gradle Plugin Portal 三个插件仓库；`rootProject.name = 'update-ft'` 决定产物 jar 的文件名。 |
 | `gradlew`、`gradlew.bat` | Gradle Wrapper 启动脚本（Linux/macOS 与 Windows），保证不装 Gradle 也能构建。 |
 | `gradle/wrapper/gradle-wrapper.jar` | Wrapper 引导程序本体。 |
@@ -138,7 +138,6 @@ update-ft-template-1.21.11/
 | `client/UpdateFtClient.java`（`src/client/java`） | **客户端入口**（`ClientModInitializer`）。调用 `MenuScreens.register` 把 `MenuType` 与 `FletchingTableScreen` 绑定。 |
 | `client/FletchingTableScreen.java`（`src/client/java`） | 界面渲染：176×166 布局，背景用 `update-ft:textures/gui/ft_gui.png`（从 256×256 画布的 (0,0) 取 176×166）；`init()` 里把标题居中；`render()` 末尾手动调 `renderTooltip`（1.21.11 的父类已不再自动调用）。 |
 | `mixin/AbstractArrowMixin.java` | 箭矢行为的核心 Mixin：① `@ModifyArg` 改 `onHitEntity` 里 `Entity.hurtOrSimulate(DamageSource, float)` 的伤害参数，加上 `damageBonus`；② `onHitBlock` 头部注入，按 `effect` 分派——TNT 箭爆炸并移除，红石箭先做 `TRIGGER_BLOCK` 触发、再在命中面放隐形脉冲方块通电（不取消原版逻辑，箭会照常插进方块）；③ `onHitEntity` 在所有 return 处注入，TNT 箭命中实体时爆炸并移除。所有爆炸、放方块与移除都只在服务端执行，客户端交回原版逻辑，由服务端包同步。 |
-| `mixin/ExampleMixin.java` | Fabric 模板自带的示例 Mixin（对 `MinecraftServer.loadLevel` 的空注入），**不产生任何效果**，可安全删除（同时从 `update-ft.mixins.json` 的 `mixins` 数组里去掉）。 |
 
 ### 资源与元数据（`src/main/resources/`）
 
@@ -170,10 +169,9 @@ update-ft-template-1.21.11/
 - **配方只在制箭台里生效**：普通工作台没有任何本模组的配方，生存模式想造这些箭必须用制箭台。
 - **配方写死在代码里**：暂不支持数据包/配方书，改配方要动 `FletchingRecipes.java`。
 - **红石箭**的脉冲半径固定为 2 格（只对按钮/拉杆/门这类“可触发”方块），真正通电只作用于**命中面相邻的那一格**；想让远处的红石灯亮，需要命中它本身或让红石粉把信号传导过去。
-- `update-ft:redstone_pulse` 是隐形、无碰撞、无掉落的临时方块，正常会在 8 tick 后自动消失；只有在服务器于这 8 tick 内崩溃时，才可能残留在世界里（重进后会看到它，可直接打掉）。
-- **TNT 箭会破坏方块**（按设计如此），在多人服相当于可无限使用的拆家工具，且近距离会伤到自己。
-- `ExampleMixin` 是模板残留的空注入，可以删掉。
-- `loom_version` 用的是 `1.15-SNAPSHOT` 快照版本，长时间后可能因仓库更新导致构建失败，建议锁定固定版本。
+- `update-ft:redstone_pulse` 是隐形、无碰撞、无掉落的临时方块，正常会在 8 tick 后自动消失；只有服务器恰好在这 8 tick 内崩溃才可能残留。因为它不渲染，肉眼看不到，发现红石无源通电时可以用 `/fill <范围> update-ft:redstone_pulse air` 清掉。
+- **TNT 箭会破坏方块**（按设计如此），在多人服相当于可无限使用的拆家工具，且近距离会伤到自己。**关掉 `mobGriefing` 后只造成伤害、不再破坏方块。**
+- 制箭台界面在玩家离开 8 格或方块被拆掉后会自动关闭；但两名玩家同时打开同一张制箭台仍是各用各的容器（没有方块实体）。
 
 ## 许可
 

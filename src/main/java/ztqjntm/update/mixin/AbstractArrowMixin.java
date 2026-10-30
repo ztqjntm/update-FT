@@ -23,6 +23,7 @@ import net.minecraft.world.level.block.FenceGateBlock;
 import net.minecraft.world.level.block.LeverBlock;
 import net.minecraft.world.level.block.TrapDoorBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
@@ -143,12 +144,18 @@ public abstract class AbstractArrowMixin {
     }
 
     /**
-     * TNT 箭的爆炸：半径 4、不点火、按 TNT 规则破坏方块，实体伤害减半。
+     * TNT 箭的爆炸：半径 4、不点火，实体伤害减半。
+     * 方块破坏跟随 {@code mobGriefing}：关掉时不炸方块，只保留伤害。
      * 只由服务端调用。
      */
     @Unique
     private void updateft$explode(AbstractArrow self, Vec3 pos) {
-        Level level = self.level();
+        if (!(self.level() instanceof ServerLevel level)) {
+            return;
+        }
+        Level.ExplosionInteraction interaction = level.getGameRules().get(GameRules.MOB_GRIEFING)
+                ? Level.ExplosionInteraction.TNT
+                : Level.ExplosionInteraction.NONE;
         level.explode(
                 self,
                 Explosion.getDefaultDamageSource(level, self),
@@ -158,7 +165,7 @@ public abstract class AbstractArrowMixin {
                 pos.z,
                 4.0F,
                 false,
-                Level.ExplosionInteraction.TNT
+                interaction
         );
     }
 
@@ -243,6 +250,8 @@ public abstract class AbstractArrowMixin {
         Vec3 dest = this.updateft$findSafeDestination(level, owner, hit.subtract(offset));
 
         owner.teleportTo(level, dest.x, dest.y, dest.z, Set.of(), owner.getYRot(), owner.getXRot(), false);
+        // 清掉传送前累积的下落距离，否则边掉边射会被“补算”一次摔落伤害（原版末影珍珠同样会重置）
+        owner.resetFallDistance();
         // 收 3 点摔落伤害（原版末影珍珠是 5 点，这里稍微轻一些）
         owner.hurtServer(level, level.damageSources().fall(), 3.0F);
 
@@ -265,8 +274,8 @@ public abstract class AbstractArrowMixin {
     }
 
     /**
-     * 铜箭：雷雨天命中时召唤一道真实闪电，做法和避雷针引雷一致。
-     * 不是雷雨天就什么都不做，箭照常插在地上。
+     * 铜箭：雷雨天、且在能看到天空的位置命中时召唤一道真实闪电，做法和避雷针引雷一致。
+     * 不是雷雨天、或落点在地下/室内就什么都不做，箭照常插在地上。
      * 只由服务端调用。
      */
     @Unique
@@ -274,11 +283,16 @@ public abstract class AbstractArrowMixin {
         if (!(self.level() instanceof ServerLevel level) || !level.isThundering()) {
             return;
         }
+        BlockPos strikePos = BlockPos.containing(hit);
+        // 地下/室内不劈，避免在洞穴里点火、误伤
+        if (!level.canSeeSkyFromBelowWater(strikePos)) {
+            return;
+        }
         LightningBolt bolt = EntityType.LIGHTNING_BOLT.create(level, EntitySpawnReason.TRIGGERED);
         if (bolt == null) {
             return;
         }
-        bolt.snapTo(Vec3.atBottomCenterOf(BlockPos.containing(hit)));
+        bolt.snapTo(Vec3.atBottomCenterOf(strikePos));
         // 让伤害/击杀算在射手头上（发射器射出的没有主人，则为 null）
         if (self.getOwner() instanceof ServerPlayer player) {
             bolt.setCause(player);
