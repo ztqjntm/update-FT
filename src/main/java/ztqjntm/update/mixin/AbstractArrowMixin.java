@@ -284,8 +284,11 @@ public abstract class AbstractArrowMixin {
             return;
         }
         BlockPos strikePos = BlockPos.containing(hit);
-        // 地下/室内不劈，避免在洞穴里点火、误伤
-        if (!level.canSeeSkyFromBelowWater(strikePos)) {
+        // 地下/室内不劈，避免在洞穴里点火、误伤。
+        // 查的是命中方块**上方**那一格：命中地面时 strikePos 本身在高度图以下，
+        // 直接判它永远看不到天；而 canSeeSkyFromBelowWater 在海拔以下会去查海平面，
+        // 海底洞穴也会误判成露天。
+        if (!level.canSeeSky(strikePos.above())) {
             return;
         }
         LightningBolt bolt = EntityType.LIGHTNING_BOLT.create(level, EntitySpawnReason.TRIGGERED);

@@ -160,10 +160,16 @@ public class FletchingTableMenu extends AbstractContainerMenu {
 		/**
 		 * 产物一次只能整份拿走。否则右键只拿 1 个却照样消耗一整套原料，
 		 * 玩家会白亏材料（1 份产物 = 1 套原料）。
+		 * <p>
+		 * {@code maxAmount} 是“光标还能装下多少”：装不下整份就拒绝，
+		 * 不然双击收集时会把光标堆叠顶爆（超过 64 个）。
 		 */
 		@Override
 		public Optional<ItemStack> tryRemove(int amount, int maxAmount, Player player) {
 			int count = this.getItem().getCount();
+			if (maxAmount < count) {
+				return Optional.empty();
+			}
 			return super.tryRemove(count, count, player);
 		}
 
