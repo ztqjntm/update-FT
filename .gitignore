@@ -51,3 +51,7 @@ replay_*.log
 # workbuddy 本地工作区数据（AI 会话记忆、缓存等，只属于本机，不随项目发布）
 
 .workbuddy/
+
+# 设计素材：图标原图只留在本地，正式图标已放进 assets/update-ft/icon.png
+
+/*-icon.png
