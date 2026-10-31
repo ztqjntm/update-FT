@@ -26,7 +26,7 @@
 | `update-ft:copper_arrow` | 铜箭 | Copper Arrow | +0 | 雷雨天命中时召唤闪电 |
 | `update-ft:iron_arrow` | 铁箭 | Iron Arrow | +1 | — |
 | `update-ft:diamond_arrow` | 钻石箭 | Diamond Arrow | +2 | — |
-| `update-ft:gold_arrow` | 金箭 | Golden Arrow | +0 | — |
+| `update-ft:gold_arrow` | 金箭 | Golden Arrow | -1 | — |
 | `update-ft:netherite_arrow` | 下界合金箭 | Netherite Arrow | +4 | — |
 | `update-ft:tnt_arrow` | TNT 箭 | TNT Arrow | -1 | 命中方块或实体时爆炸 |
 | `update-ft:redstone_arrow` | 红石箭 | Redstone Arrow | -1 | 命中方块后激发红石脉冲 |
@@ -63,7 +63,7 @@
 | 钻石 | 钻石箭 | 4 |
 | 下界合金锭 | 下界合金箭 | 4 |
 | TNT 方块 | TNT 箭 | 1 |
-| 红石 | 红石箭 | 4 |
+| 红石 | 红石箭 | 3 |
 | 末影珍珠 | 珍珠箭 | 2 |
 
 - 不依赖方块实体：三个原料格是每次打开时临时创建的 `SimpleContainer`，**不持久化**。
@@ -85,7 +85,7 @@
 ## 目录结构
 
 ```
-update-ft-template-1.21.11/
+update-ft/
 ├── build.gradle                     # 构建脚本（Loom、依赖、jar 打包）
 ├── gradle.properties                # 版本号 / MC 版本 / 依赖版本集中配置
 ├── settings.gradle                  # 插件仓库与项目名
@@ -129,8 +129,8 @@ update-ft-template-1.21.11/
 | `NoEntityDamageCalculator.java` | 另一个爆炸伤害计算器：`shouldDamageEntity` 返回 `false`、`getKnockbackMultiplier` 返回 `0`，让爆炸对实体完全无效。供红石箭的“脉冲”使用。 |
 | `block/ModBlocks.java` | 方块注册表。目前只有 `update-ft:redstone_pulse`（隐形红石脉冲），无物品形态、无掉落物，只由红石箭临时放置。 |
 | `block/RedstonePulseBlock.java` | 红石脉冲方块：不渲染（`RenderShape.INVISIBLE`）、无碰撞、可替换，`getSignal`/`getDirectSignal` 固定返回 15 并声明 `isSignalSource`；`tick()` 里把自己变回空气，实现 8 tick 的“脉冲”。 |
-| `item/ModItems.java` | 8 种箭的注册表。`register()` 用 `Item.Properties.setId(ResourceKey)` 绑定 ID 后注册进 `BuiltInRegistries.ITEM`；`initialize()` 把 8 种箭加入创造模式「战斗」页签。数值（伤害加成、是否爆炸）与悬停介绍的语言键都写在这个文件里。 |
-| `item/ModArrowItem.java` | 自定义箭物品类，继承 `ArrowItem`，多三个字段：`damageBonus`（伤害加成）、`effect`（命中效果枚举 `NONE` / `EXPLOSIVE` / `REDSTONE`）供 Mixin 读取，`descriptionKeys`（悬停介绍的语言键列表）。覆写的 `appendHoverText` 会把每个键渲染成一行灰色小字。 |
+| `item/ModItems.java` | 9 种箭的注册表。`register()` 用 `Item.Properties.setId(ResourceKey)` 绑定 ID 后注册进 `BuiltInRegistries.ITEM`；`initialize()` 把 9 种箭加入创造模式「战斗」页签。数值（伤害加成、命中效果）与悬停介绍的语言键都写在这个文件里。 |
+| `item/ModArrowItem.java` | 自定义箭物品类，继承 `ArrowItem`，多三个字段：`damageBonus`（伤害加成）、`effect`（命中效果枚举 `NONE` / `EXPLOSIVE` / `REDSTONE` / `TELEPORT` / `LIGHTNING`）供 Mixin 读取，`descriptionKeys`（悬停介绍的语言键列表）。覆写的 `appendHoverText` 会把每个键渲染成一行灰色小字。 |
 | `menu/ModMenuTypes.java` | 注册 `MenuType<FletchingTableMenu>`，ID 为 `update-ft:fletching_table`；客户端用它来决定打开哪个 `Screen`，服务端用它来反序列化菜单。 |
 | `menu/FletchingTableMenu.java` | 制箭台容器逻辑（`AbstractContainerMenu`）：3 个斜向原料格（`InputSlot` 用 `mayPlace` 做栏位限定）+ 1 个产物格 + 玩家背包（坐标与 `ft_gui.png` 一一对应）；监听原料容器变化重算产物；产物格自定义 `onTake` 消耗原料、`tryRemove` 强制整份取走；`quickMoveStack` 按物品类型把 Shift 点击的物品路由到对应原料格；`removed()` 用 `clearContainer` 把原料放回背包。 |
 | `recipe/FletchingRecipe.java` | 单个制箭台配方：只保存**箭头材料**的 `Ingredient` 与产物（木棍、羽毛是固定栏位，不必重复写），`matchesTip()` 判断某物品能不能当这种箭的箭头。 |
@@ -146,13 +146,13 @@ update-ft-template-1.21.11/
 | `fabric.mod.json` | 模组元数据：id、名称、描述、作者、图标、许可证、入口点（`main` → `UpdateFt`，`client` → `UpdateFtClient`）、Mixin 配置引用，以及 `depends`（Fabric Loader / Minecraft / Java / Fabric API 版本要求）。 |
 | `update-ft.mixins.json` | Mixin 配置文件：指定包名 `ztqjntm.update.mixin`、兼容级别 `JAVA_21`、生效的 Mixin 列表，`injectors.defaultRequire = 1`（注入点找不到就直接报错，避免静默失效）。 |
 | `assets/update-ft/icon.png` | 模组列表里显示的图标（128×128）。 |
-| `assets/update-ft/items/*.json` | **物品定义**（1.21.4+ 的新格式）：每个文件指定该物品用哪个模型，例如 `{"model": {"type": "minecraft:model", "model": "update-ft:item/stone_arrow"}}`。8 个物品各一份。 |
-| `assets/update-ft/models/item/*.json` | **物品模型**：`parent` 为 `minecraft:item/generated`，`layer0` 指向对应贴图。8 个物品各一份。 |
+| `assets/update-ft/items/*.json` | **物品定义**（1.21.4+ 的新格式）：每个文件指定该物品用哪个模型，例如 `{"model": {"type": "minecraft:model", "model": "update-ft:item/stone_arrow"}}`。9 个物品各一份。 |
+| `assets/update-ft/models/item/*.json` | **物品模型**：`parent` 为 `minecraft:item/generated`，`layer0` 指向对应贴图。9 个物品各一份。 |
 | `assets/update-ft/textures/item/*.png` | **物品贴图**，16×16，9 种箭各一张，文件名与物品 ID 一致。 |
 | `assets/update-ft/textures/gui/ft_gui.png` | **制箭台界面贴图**，256×256 画布、面板画在 (0,0) 的 176×166 区域；设计稿的坐标表与标注图可在 git 历史（提交 `627e937`）里找到，贴图已清掉三格下方的 1px 描边残留。 |
-| `assets/update-ft/lang/zh_cn.json` | 简体中文文本：8 个 `item.update-ft.*` 物品名、`container.update-ft.fletching_table`（界面标题），以及 17 条 `tooltip.update-ft.*` 悬停介绍（每行一个键）。 |
+| `assets/update-ft/lang/zh_cn.json` | 简体中文文本：9 个 `item.update-ft.*` 物品名、`container.update-ft.fletching_table`（界面标题），以及 22 条 `tooltip.update-ft.*` 悬停介绍（每行一个键）。 |
 | `assets/update-ft/lang/en_us.json` | 英文文本，键名与中文文件一一对应。 |
-| `data/minecraft/tags/item/arrows.json` | 把 8 种箭并入原版 `minecraft:arrows` 物品标签，显式写了 `"replace": false`（与默认行为一致，即**合并**而非覆盖），这样弓、弩、发射器都会把它们当作合法弹药。 |
+| `data/minecraft/tags/item/arrows.json` | 把 9 种箭并入原版 `minecraft:arrows` 物品标签，显式写了 `"replace": false`（与默认行为一致，即**合并**而非覆盖），这样弓、弩、发射器都会把它们当作合法弹药。 |
 
 > 新增一种箭需要同时改：`ModItems`（注册 + 悬停介绍键）、`items/`、`models/item/`、`textures/item/`（三份资源同名）、`lang` 两个语言文件（物品名与 `tooltip.update-ft.<id>.N` 介绍行）、`data/minecraft/tags/item/arrows.json`，想让它能合成还要在 `FletchingRecipes` 里加一行。
 

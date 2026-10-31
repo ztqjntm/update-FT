@@ -15,13 +15,12 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerExplosion;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.world.level.block.BeehiveBlock;
 import net.minecraft.world.level.block.BellBlock;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.ButtonBlock;
-import net.minecraft.world.level.block.DoorBlock;
-import net.minecraft.world.level.block.FenceGateBlock;
+import net.minecraft.world.level.block.CandleBlock;
 import net.minecraft.world.level.block.LeverBlock;
-import net.minecraft.world.level.block.TrapDoorBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.AABB;
@@ -206,7 +205,10 @@ public abstract class AbstractArrowMixin {
         // 又被通电粘住，松电瞬间又关上（看起来像没反应）。
         if (!this.updateft$respondsToTrigger(level.getBlockState(hitPos))) {
             BlockPos pulsePos = hitPos.relative(hitResult.getDirection());
-            if (level.isInWorldBounds(pulsePos) && level.getBlockState(pulsePos).isAir()) {
+            BlockState pulseState = level.getBlockState(pulsePos);
+            // isAir() 太严：雪层、高草、藤蔓、水这类可替换方块会把脉冲方块挡在外面，
+            // 表现为“箭插上了、火花响了，但红石灯不亮”
+            if (level.isInWorldBounds(pulsePos) && (pulseState.isAir() || pulseState.canBeReplaced())) {
                 level.setBlock(pulsePos, ModBlocks.REDSTONE_PULSE.defaultBlockState(), Block.UPDATE_ALL);
                 level.scheduleTick(pulsePos, ModBlocks.REDSTONE_PULSE, RedstonePulseBlock.DURATION);
             }
@@ -221,12 +223,16 @@ public abstract class AbstractArrowMixin {
     @Unique
     private boolean updateft$respondsToTrigger(BlockState state) {
         Block block = state.getBlock();
-        return block instanceof ButtonBlock
+        // 能用原版标签的就用标签，别的模组加的门/按钮也能被识别；
+        // 拉杆、钟、蜡烛、蜂箱没有对应标签，只能按类型判断
+        return state.is(BlockTags.BUTTONS)
+                || state.is(BlockTags.DOORS)
+                || state.is(BlockTags.TRAPDOORS)
+                || state.is(BlockTags.FENCE_GATES)
                 || block instanceof LeverBlock
-                || block instanceof DoorBlock
-                || block instanceof FenceGateBlock
-                || block instanceof TrapDoorBlock
-                || block instanceof BellBlock;
+                || block instanceof BellBlock
+                || block instanceof CandleBlock
+                || block instanceof BeehiveBlock;
     }
 
     /**

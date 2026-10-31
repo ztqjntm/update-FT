@@ -17,7 +17,7 @@ import java.util.List;
  *     <li>{@link #SHAFT_SLOT}=1（界面中间）——恒为木棍；</li>
  *     <li>{@link #FLETCHING_SLOT}=2（界面左下）——恒为羽毛。</li>
  * </ul>
- * 所以每条配方只需要描述“箭头材料 → 产物”。想做新箭，往 {@link #RECIPES} 里加一行即可
+ * 所以每条配方只需要描述“箭头材料 → 产物”。想做新箭，往 {@link #recipes()} 里加一行即可
  * （目前写死在代码里，以后要支持数据包再换成自定义 RecipeType + JSON）。
  */
 public final class FletchingRecipes {
@@ -25,23 +25,34 @@ public final class FletchingRecipes {
     public static final int SHAFT_SLOT = 1;
     public static final int FLETCHING_SLOT = 2;
 
-    private static final List<FletchingRecipe> RECIPES = List.of(
-            // 原版箭
-            new FletchingRecipe(new ItemStack(Items.ARROW, 4), Ingredient.of(Items.FLINT)),
-            // 本模组的箭
-            new FletchingRecipe(new ItemStack(ModItems.STONE_ARROW, 4), Ingredient.of(Items.COBBLESTONE)),
-            new FletchingRecipe(new ItemStack(ModItems.COPPER_ARROW, 4), Ingredient.of(Items.COPPER_INGOT)),
-            new FletchingRecipe(new ItemStack(ModItems.IRON_ARROW, 4), Ingredient.of(Items.IRON_INGOT)),
-            new FletchingRecipe(new ItemStack(ModItems.GOLD_ARROW, 4), Ingredient.of(Items.GOLD_INGOT)),
-            new FletchingRecipe(new ItemStack(ModItems.DIAMOND_ARROW, 4), Ingredient.of(Items.DIAMOND)),
-            new FletchingRecipe(new ItemStack(ModItems.NETHERITE_ARROW, 4), Ingredient.of(Items.NETHERITE_INGOT)),
-            // 爆炸/功能箭：产出少一些
-            new FletchingRecipe(new ItemStack(ModItems.TNT_ARROW, 1), Ingredient.of(Items.TNT)),
-            new FletchingRecipe(new ItemStack(ModItems.REDSTONE_ARROW, 4), Ingredient.of(Items.REDSTONE)),
-            new FletchingRecipe(new ItemStack(ModItems.PEARL_ARROW, 2), Ingredient.of(Items.ENDER_PEARL))
-    );
+    /**
+     * 配方表。惰性构建——不在类初始化阶段引用 {@link ModItems}，
+     * 避免“谁先被加载”变成一条隐性约束（物品必须在注册表冻结之前完成注册）。
+     */
+    private static List<FletchingRecipe> recipes;
 
     private FletchingRecipes() {
+    }
+
+    private static List<FletchingRecipe> recipes() {
+        if (recipes == null) {
+            recipes = List.of(
+                    // 原版箭
+                    new FletchingRecipe(new ItemStack(Items.ARROW, 4), Ingredient.of(Items.FLINT)),
+                    // 本模组的箭
+                    new FletchingRecipe(new ItemStack(ModItems.STONE_ARROW, 4), Ingredient.of(Items.COBBLESTONE)),
+                    new FletchingRecipe(new ItemStack(ModItems.COPPER_ARROW, 4), Ingredient.of(Items.COPPER_INGOT)),
+                    new FletchingRecipe(new ItemStack(ModItems.IRON_ARROW, 4), Ingredient.of(Items.IRON_INGOT)),
+                    new FletchingRecipe(new ItemStack(ModItems.GOLD_ARROW, 4), Ingredient.of(Items.GOLD_INGOT)),
+                    new FletchingRecipe(new ItemStack(ModItems.DIAMOND_ARROW, 4), Ingredient.of(Items.DIAMOND)),
+                    new FletchingRecipe(new ItemStack(ModItems.NETHERITE_ARROW, 4), Ingredient.of(Items.NETHERITE_INGOT)),
+                    // 爆炸/功能箭：产出少一些
+                    new FletchingRecipe(new ItemStack(ModItems.TNT_ARROW, 1), Ingredient.of(Items.TNT)),
+                    new FletchingRecipe(new ItemStack(ModItems.REDSTONE_ARROW, 3), Ingredient.of(Items.REDSTONE)),
+                    new FletchingRecipe(new ItemStack(ModItems.PEARL_ARROW, 2), Ingredient.of(Items.ENDER_PEARL))
+            );
+        }
+        return recipes;
     }
 
     /** 这个物品能不能当某种箭的箭头（箭头格用它做 mayPlace 过滤） */
@@ -49,7 +60,7 @@ public final class FletchingRecipes {
         if (stack.isEmpty()) {
             return false;
         }
-        for (FletchingRecipe recipe : RECIPES) {
+        for (FletchingRecipe recipe : recipes()) {
             if (recipe.matchesTip(stack)) {
                 return true;
             }
@@ -69,7 +80,7 @@ public final class FletchingRecipes {
             return ItemStack.EMPTY;
         }
         ItemStack tip = input.getItem(TIP_SLOT);
-        for (FletchingRecipe recipe : RECIPES) {
+        for (FletchingRecipe recipe : recipes()) {
             if (recipe.matchesTip(tip)) {
                 return recipe.createResult();
             }

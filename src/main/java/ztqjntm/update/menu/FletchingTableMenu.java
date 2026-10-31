@@ -80,10 +80,6 @@ public class FletchingTableMenu extends AbstractContainerMenu {
 		this.updateResult();
 	}
 
-	public Container getContainer() {
-		return this.input;
-	}
-
 	@Override
 	public void slotsChanged(Container container) {
 		super.slotsChanged(container);

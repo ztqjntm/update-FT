@@ -20,58 +20,58 @@ public class ModItems {
     }
 
     // 参数依次是：物品 ID、伤害加成、命中效果、悬停介绍的语言文件 key（每个 key 一行）
-    public static final Item STONE_ARROW = register("stone_arrow",
+    public static final ModArrowItem STONE_ARROW = register("stone_arrow",
             props -> new ModArrowItem(props, 0, ModArrowItem.Effect.NONE,
                     "tooltip.update-ft.stone_arrow.1",
                     "tooltip.update-ft.stone_arrow.2"),
             new Item.Properties());
 
-    public static final Item COPPER_ARROW = register("copper_arrow",
+    public static final ModArrowItem COPPER_ARROW = register("copper_arrow",
             props -> new ModArrowItem(props, 0, ModArrowItem.Effect.LIGHTNING,
                     "tooltip.update-ft.copper_arrow.1",
                     "tooltip.update-ft.copper_arrow.2",
                     "tooltip.update-ft.copper_arrow.3"),
             new Item.Properties());
 
-    public static final Item IRON_ARROW = register("iron_arrow",
+    public static final ModArrowItem IRON_ARROW = register("iron_arrow",
             props -> new ModArrowItem(props, 1, ModArrowItem.Effect.NONE,
                     "tooltip.update-ft.iron_arrow.1",
                     "tooltip.update-ft.iron_arrow.2"),
             new Item.Properties());
 
-    public static final Item DIAMOND_ARROW = register("diamond_arrow",
+    public static final ModArrowItem DIAMOND_ARROW = register("diamond_arrow",
             props -> new ModArrowItem(props, 2, ModArrowItem.Effect.NONE,
                     "tooltip.update-ft.diamond_arrow.1",
                     "tooltip.update-ft.diamond_arrow.2"),
             new Item.Properties());
 
-    public static final Item GOLD_ARROW = register("gold_arrow",
-            props -> new ModArrowItem(props, 0, ModArrowItem.Effect.NONE,
+    public static final ModArrowItem GOLD_ARROW = register("gold_arrow",
+            props -> new ModArrowItem(props, -1, ModArrowItem.Effect.NONE,
                     "tooltip.update-ft.gold_arrow.1",
                     "tooltip.update-ft.gold_arrow.2"),
             new Item.Properties());
 
-    public static final Item NETHERITE_ARROW = register("netherite_arrow",
+    public static final ModArrowItem NETHERITE_ARROW = register("netherite_arrow",
             props -> new ModArrowItem(props, 4, ModArrowItem.Effect.NONE,
                     "tooltip.update-ft.netherite_arrow.1",
                     "tooltip.update-ft.netherite_arrow.2"),
             new Item.Properties());
 
-    public static final Item TNT_ARROW = register("tnt_arrow",
+    public static final ModArrowItem TNT_ARROW = register("tnt_arrow",
             props -> new ModArrowItem(props, -1, ModArrowItem.Effect.EXPLOSIVE,
                     "tooltip.update-ft.tnt_arrow.1",
                     "tooltip.update-ft.tnt_arrow.2",
                     "tooltip.update-ft.tnt_arrow.3"),
             new Item.Properties());
 
-    public static final Item REDSTONE_ARROW = register("redstone_arrow",
+    public static final ModArrowItem REDSTONE_ARROW = register("redstone_arrow",
             props -> new ModArrowItem(props, -1, ModArrowItem.Effect.REDSTONE,
                     "tooltip.update-ft.redstone_arrow.1",
                     "tooltip.update-ft.redstone_arrow.2",
                     "tooltip.update-ft.redstone_arrow.3"),
             new Item.Properties());
 
-    public static final Item PEARL_ARROW = register("pearl_arrow",
+    public static final ModArrowItem PEARL_ARROW = register("pearl_arrow",
             props -> new ModArrowItem(props, 0, ModArrowItem.Effect.TELEPORT,
                     "tooltip.update-ft.pearl_arrow.1",
                     "tooltip.update-ft.pearl_arrow.2",
