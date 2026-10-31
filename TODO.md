@@ -25,7 +25,6 @@
      - **A（0.2，高风险高收益）**：自建 `update-ft:fletching_table` 方块（blockstate + 模型 + 物品模型 + loot + 配方 + **村民 POI** + 兼容原版方块），可顺带加 BlockEntity 做桌面展示。
 2. **BlockEntity**：解决容器不持久、多人不共享、漏斗接不进来、桌面无法展示材料/进度。与 A 一起做最划算。
 3. **数据包配方**：与 P2-1 同源，做完顺带支持整合包作者自定义。
-4. `fabric.mod.json` 的 `contact` 补 `issues` 字段，指向 GitHub Issues（纯可选）。
 
 ## 发布检查清单
 
