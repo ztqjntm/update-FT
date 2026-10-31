@@ -16,6 +16,7 @@ import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerExplosion;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.block.BeehiveBlock;
 import net.minecraft.world.level.block.BellBlock;
 import net.minecraft.world.level.block.Block;
@@ -209,7 +210,10 @@ public abstract class AbstractArrowMixin {
             // isAir() 太严：雪层、高草、藤蔓、水这类可替换方块会把脉冲方块挡在外面，
             // 表现为“箭插上了、火花响了，但红石灯不亮”
             if (level.isInWorldBounds(pulsePos) && (pulseState.isAir() || pulseState.canBeReplaced())) {
-                level.setBlock(pulsePos, ModBlocks.REDSTONE_PULSE.defaultBlockState(), Block.UPDATE_ALL);
+                // 泡在水里就放成含水方块：水面不破、结束后水源原样还回去
+                boolean waterlogged = pulseState.getFluidState().is(FluidTags.WATER);
+                level.setBlock(pulsePos, ModBlocks.REDSTONE_PULSE.defaultBlockState()
+                        .setValue(RedstonePulseBlock.WATERLOGGED, waterlogged), Block.UPDATE_ALL);
                 level.scheduleTick(pulsePos, ModBlocks.REDSTONE_PULSE, RedstonePulseBlock.DURATION);
             }
         }

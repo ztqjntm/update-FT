@@ -1,6 +1,9 @@
 {
   "variants": {
-    "": {
+    "waterlogged=false": {
+      "model": "update-ft:block/redstone_pulse"
+    },
+    "waterlogged=true": {
       "model": "update-ft:block/redstone_pulse"
     }
   }
