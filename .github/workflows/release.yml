@@ -326,8 +326,10 @@ jobs:
           case "$HTTP" in
             2*) ;;
             *)
-              echo "::error::CurseForge 上传失败（HTTP ${HTTP}）"
-              cat /tmp/cf-upload.json || true
+              # 把服务端返回体塞进 annotation：job 日志要管理员权限，annotation 是公开可读的。
+              DETAIL="$(tr -d '\r' < /tmp/cf-upload.json 2>/dev/null | tr '\n' ' ' | cut -c1-500)"
+              MC_LIST="$(jq -r --arg n "$MC_VERSION" '[.[] | select(.name == $n) | "\(.id)/type\(.gameVersionTypeID)"] | join(",")' /tmp/cf-versions.json 2>/dev/null || echo '?')"
+              echo "::error::CurseForge 上传失败（HTTP ${HTTP}）：${DETAIL}｜gameVersions=[${MC_ID},${FABRIC_ID}]，${MC_VERSION} 命中 ${MC_LIST}"
               exit 1
               ;;
           esac
