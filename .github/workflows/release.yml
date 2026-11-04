@@ -1,0 +1,334 @@
+# 打 tag 即发布：tag → 构建 → 校验 → GitHub Release。
+#
+# 版本号规则（只此一条，不做例外）：
+#   tag 去掉前缀 v 后，必须与 gradle.properties 的 mod_version 完全一致。
+#   预发布就把 mod_version 写成 1.0.0-rc1、提交后再打 v1.0.0-rc1，不允许"这次跳过校验"，
+#   否则 v1.0.0 发布时还要再验证同一段逻辑一遍。
+#
+# 发布正文（三种都行，优先级从高到低）：
+#   1. 先在网页上手工建好 release 并自己写正文——工作流只补/更新 jar，不动你的标题和正文；
+#   2. CHANGELOG.md 里的 `## [<版本>]` 段落（到下一个 `## ` 为止），工作流自动带进去；
+#   3. 都没有时用 GitHub 自动生成的 release notes，并给出 warning。
+
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  # 只用于重新发布已有 tag（构建机抽风、release 建错需要重来），不会构建任意分支。
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '要重新发布的已有 tag，例如 v1.0.0'
+        required: true
+        type: string
+
+# 同一个 tag 串行发布，重跑时不会出现两个 job 同时创建 release。
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: 构建并校验
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      tag: ${{ steps.vars.outputs.tag }}
+      version: ${{ steps.vars.outputs.version }}
+      prerelease: ${{ steps.vars.outputs.prerelease }}
+      mc_version: ${{ steps.mc.outputs.version }}
+    steps:
+      - name: 解析并校验 tag 格式
+        id: vars
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          TAG="${INPUT_TAG:-${GITHUB_REF_NAME}}"
+          if [[ ! "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::tag '${TAG}' 不符合 v<major>.<minor>.<patch>[-pre] 的格式"
+            exit 1
+          fi
+          VERSION="${TAG#v}"
+          case "$VERSION" in
+            *-*) PRERELEASE=true ;;
+            *)   PRERELEASE=false ;;
+          esac
+          {
+            echo "tag=${TAG}"
+            echo "version=${VERSION}"
+            echo "prerelease=${PRERELEASE}"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "RELEASE_TAG=${TAG}"
+            echo "VERSION=${VERSION}"
+          } >> "$GITHUB_ENV"
+
+      - name: 检出 tag 指向的提交
+        uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ steps.vars.outputs.tag }}
+
+      - name: 校验 gradle wrapper
+        uses: gradle/actions/wrapper-validation@v6
+
+      - name: 安装 JDK 21
+        uses: actions/setup-java@v6
+        with:
+          java-version: '21'
+          distribution: 'microsoft'
+
+      # gradlew 在仓库里没有执行位（100644），build.yml 里也是这么处理的。
+      - name: 给 gradlew 加执行位
+        run: chmod +x ./gradlew
+
+      - name: 配置 Gradle 缓存
+        uses: gradle/actions/setup-gradle@v6
+
+      # 先做一次便宜的校验，避免版本号忘了改还要等几分钟构建才报错。
+      - name: 校验 mod_version 与 tag 一致
+        run: |
+          set -euo pipefail
+          DECLARED="$(grep -E '^[[:space:]]*mod_version[[:space:]]*=' gradle.properties \
+            | head -n1 \
+            | sed -E 's/^[^=]*=[[:space:]]*//' \
+            | tr -d '[:space:]\r')"
+          if [ -z "$DECLARED" ]; then
+            echo "::error file=gradle.properties::找不到 mod_version。版本号只有这一个来源（原属性名 version），release 工作流只认它。"
+            exit 1
+          fi
+          if [ "$DECLARED" != "$VERSION" ]; then
+            echo "::error file=gradle.properties::mod_version=${DECLARED} 与 tag v${VERSION} 不一致；先改版本号并提交，再重新打 tag。"
+            exit 1
+          fi
+          echo "mod_version=${DECLARED} 与 tag v${VERSION} 一致"
+
+      # CurseForge 上传要按 Minecraft 版本号查数字 ID，所以把目标版本从配置里带出去。
+      - name: 读取 minecraft_version
+        id: mc
+        run: |
+          set -euo pipefail
+          MC="$(grep -E '^[[:space:]]*minecraft_version[[:space:]]*=' gradle.properties \
+            | head -n1 \
+            | sed -E 's/^[^=]*=[[:space:]]*//' \
+            | tr -d '[:space:]\r')"
+          if [ -z "$MC" ]; then
+            echo "::error file=gradle.properties::找不到 minecraft_version"
+            exit 1
+          fi
+          echo "version=${MC}" >> "$GITHUB_OUTPUT"
+          echo "目标 Minecraft 版本：${MC}"
+
+      - name: 构建
+        run: ./gradlew build
+
+      # 以 jar 里的 fabric.mod.json 为准：它是 processResources 用 project.version 展开的，
+      # 能同时兜住"gradle.properties 改了但 build.gradle 没接上"这类接线错误。
+      - name: 校验构建产物
+        run: |
+          set -euo pipefail
+          JAR="build/libs/update-ft-${VERSION}.jar"
+          if [ ! -f "$JAR" ]; then
+            echo "::error::没有生成 ${JAR}"
+            ls -l build/libs || true
+            exit 1
+          fi
+          INNER="$(unzip -p "$JAR" fabric.mod.json | jq -r '.version')"
+          if [ "$INNER" != "$VERSION" ]; then
+            echo "::error::jar 内 fabric.mod.json 的 version=${INNER}，与 tag v${VERSION} 不一致"
+            exit 1
+          fi
+          mkdir -p dist
+          cp "$JAR" dist/
+          SRC="build/libs/update-ft-${VERSION}-sources.jar"
+          if [ -f "$SRC" ]; then
+            cp "$SRC" dist/
+          fi
+          echo "fabric.mod.json version=${INNER}"
+          ls -l dist
+
+      - name: 提取 CHANGELOG 段落
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          : > dist/RELEASE_NOTES.md
+          if [ ! -f CHANGELOG.md ]; then
+            echo "::warning file=CHANGELOG.md::没有 CHANGELOG.md，本次 release notes 用 GitHub 自动生成；正式版发布前必须补上。"
+            exit 0
+          fi
+          awk -v hdr="## [${VERSION}]" '
+            index($0, hdr) == 1 { found = 1; next }
+            found && /^## / { exit }
+            found { line[++n] = $0 }
+            END {
+              first = 1
+              while (first <= n && line[first] ~ /^[[:space:]]*$/) first++
+              last = n
+              while (last >= first && line[last] ~ /^[[:space:]]*$/) last--
+              for (i = first; i <= last; i++) print line[i]
+            }
+          ' CHANGELOG.md > dist/RELEASE_NOTES.md
+          if [ ! -s dist/RELEASE_NOTES.md ]; then
+            echo "::warning file=CHANGELOG.md::CHANGELOG.md 里没有 '## [${VERSION}]' 段落，本次 release notes 用 GitHub 自动生成。"
+          fi
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-assets
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: 创建 Release
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: 取回构建产物
+        uses: actions/download-artifact@v8
+        with:
+          name: release-assets
+          path: dist
+
+      - name: 创建 GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.build.outputs.tag }}
+          PRERELEASE: ${{ needs.build.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          ARGS=(--title "$TAG" --verify-tag)
+          if [ "$PRERELEASE" = "true" ]; then
+            ARGS+=(--prerelease)
+          fi
+          if [ -s dist/RELEASE_NOTES.md ]; then
+            ARGS+=(--notes-file dist/RELEASE_NOTES.md)
+          else
+            ARGS+=(--generate-notes)
+          fi
+          # 网页上手工建的 release 优先：只补/更新资产，绝不覆盖标题与正文。
+          # 不存在时才由工作流创建（正文取 CHANGELOG 段落，缺失则自动生成）。
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "release ${TAG} 已存在：只更新资产，保留现有标题与正文"
+            gh release upload "$TAG" dist/*.jar --clobber
+          else
+            gh release create "$TAG" dist/*.jar "${ARGS[@]}"
+          fi
+          gh release view "$TAG" --json url,assets --jq '.url'
+
+  # 和 publish 并行：CurseForge 或 GitHub 任一方抽风，都不会挡住另一方。
+  curseforge:
+    name: 上传 CurseForge
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      # 项目 ID 是公开信息，直接写在这里；token 只从 Secrets 读，绝不进仓库。
+      CF_PROJECT_ID: '1775183'
+      CF_API_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+    steps:
+      - name: 取回构建产物
+        uses: actions/download-artifact@v8
+        with:
+          name: release-assets
+          path: dist
+
+      - name: 未配置 CURSEFORGE_TOKEN
+        if: env.CF_API_TOKEN == ''
+        run: echo "::warning::没有取到 CURSEFORGE_TOKEN，跳过 CurseForge 上传。若你确实建过，检查它是不是 Repository secret（Environment secret 需要在 job 上声明 environment 才读得到）。"
+
+      # 官方作者接口：POST /api/projects/{id}/upload-file + X-Api-Token，
+      # 表单只有 metadata（JSON 字符串）和 file 两个字段。
+      - name: 上传到 CurseForge
+        if: env.CF_API_TOKEN != ''
+        env:
+          TAG: ${{ needs.build.outputs.tag }}
+          VERSION: ${{ needs.build.outputs.version }}
+          PRERELEASE: ${{ needs.build.outputs.prerelease }}
+          MC_VERSION: ${{ needs.build.outputs.mc_version }}
+        run: |
+          set -euo pipefail
+          JAR="dist/update-ft-${VERSION}.jar"
+          if [ ! -f "$JAR" ]; then
+            echo "::error::找不到 ${JAR}"
+            ls -l dist
+            exit 1
+          fi
+
+          API="https://minecraft.curseforge.com/api"
+          UA="update-ft-release-workflow (+https://github.com/${GITHUB_REPOSITORY})"
+
+          # gameVersions 要的是数字 ID，必须现查，不能猜。
+          VHTTP="$(curl -sS --max-time 60 -A "$UA" \
+            -H "X-Api-Token: ${CF_API_TOKEN}" -H "Accept: application/json" \
+            "${API}/game/versions" -o /tmp/cf-versions.json -w '%{http_code}' || echo 000)"
+          if [ "$VHTTP" != "200" ]; then
+            echo "::error::拉取 CurseForge 版本列表失败（HTTP ${VHTTP}）"
+            head -c 500 /tmp/cf-versions.json || true
+            exit 1
+          fi
+          if ! jq -e 'type == "array"' /tmp/cf-versions.json >/dev/null 2>&1; then
+            echo "::error::版本列表不是 JSON 数组，可能是 token 无效或被 CDN 拦截"
+            head -c 300 /tmp/cf-versions.json || true
+            exit 1
+          fi
+
+          MC_ID="$(jq -r --arg n "$MC_VERSION" '[.[] | select(.name == $n) | .id] | .[0] // empty' /tmp/cf-versions.json)"
+          FABRIC_ID="$(jq -r '[.[] | select(.name == "Fabric") | .id] | .[0] // empty' /tmp/cf-versions.json)"
+          if [ -z "$MC_ID" ]; then
+            echo "::error::CurseForge 版本列表里找不到 Minecraft '${MC_VERSION}'"
+            exit 1
+          fi
+          if [ -z "$FABRIC_ID" ]; then
+            echo "::error::CurseForge 版本列表里找不到 'Fabric'"
+            exit 1
+          fi
+          echo "版本 ID：Minecraft ${MC_VERSION}=${MC_ID}，Fabric=${FABRIC_ID}"
+
+          if [ "$PRERELEASE" = "true" ]; then
+            RELEASE_TYPE=beta
+          else
+            RELEASE_TYPE=release
+          fi
+
+          if [ -s dist/RELEASE_NOTES.md ]; then
+            CHANGELOG="$(cat dist/RELEASE_NOTES.md)"
+          else
+            CHANGELOG="详见 GitHub Release：https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG}"
+          fi
+
+          jq -n --arg name "update-ft ${VERSION}" \
+                --arg changelog "$CHANGELOG" \
+                --arg releaseType "$RELEASE_TYPE" \
+                --argjson mc "$MC_ID" \
+                --argjson fabric "$FABRIC_ID" \
+                '{displayName: $name, changelog: $changelog, changelogType: "markdown",
+                  releaseType: $releaseType, gameVersions: [$mc, $fabric]}' \
+            > /tmp/cf-metadata.json
+
+          # --form-string 而不是 -F：changelog 里的引号、分号、@ 不会被 curl 当语法解析。
+          HTTP="$(curl -sS --max-time 180 -A "$UA" -o /tmp/cf-upload.json -w '%{http_code}' \
+            -H "X-Api-Token: ${CF_API_TOKEN}" \
+            --form-string "metadata=$(cat /tmp/cf-metadata.json)" \
+            -F "file=@${JAR}" \
+            "${API}/projects/${CF_PROJECT_ID}/upload-file" || echo 000)"
+
+          case "$HTTP" in
+            2*) ;;
+            *)
+              echo "::error::CurseForge 上传失败（HTTP ${HTTP}）"
+              cat /tmp/cf-upload.json || true
+              exit 1
+              ;;
+          esac
+          echo "已上传：file id = $(jq -r '.id' /tmp/cf-upload.json)"

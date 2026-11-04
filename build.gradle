@@ -2,6 +2,12 @@ plugins {
 	id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
 }
 
+// 版本号只从 gradle.properties 的 mod_version 读取，再显式写进 project.version。
+// 必须保留这一行，否则 jar 名会变成 update-ft-unspecified.jar；
+// 显式赋值同时挡掉 -Pversion=... 之类的临时覆盖，保证 jar 名 / fabric.mod.json
+// 与 release.yml 校验的 tag 永远是同一个值。
+version = providers.gradleProperty('mod_version').get()
+
 loom {
 	// 把客户端代码拆到 src/client，main 源集拿不到任何客户端专用类，
 	// 这样服务端误用客户端 API 会直接编译报错。

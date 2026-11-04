@@ -4,6 +4,9 @@
 # Linux start script should use lf
 /gradlew        text eol=lf
 
+# Workflow 里的 run 脚本由 bash 执行，混进 CR 会变成 "set: invalid option"
+*.yml           text eol=lf
+
 # These are Windows script files and should use crlf
 *.bat           text eol=crlf
 
