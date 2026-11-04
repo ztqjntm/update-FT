@@ -16,14 +16,15 @@ import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerExplosion;
 import net.minecraft.tags.BlockTags;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.block.BeehiveBlock;
 import net.minecraft.world.level.block.BellBlock;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CandleBlock;
 import net.minecraft.world.level.block.LeverBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
@@ -94,14 +95,17 @@ public abstract class AbstractArrowMixin {
             this.updateft$summonLightning(self, hitResult.getLocation());
         }
 
-        // 珍珠箭：把射手传送到落点，箭本身消耗掉
+        // 珍珠箭：把射手传送到落点，箭本身消耗掉。
+        // 没有主人（发射器射出的）或主人已经退出时传送不成立，这时不消耗这支箭——
+        // 不 cancel，让原版把箭插进方块，玩家还能捡回来。
         if (effect == ModArrowItem.Effect.TELEPORT) {
             if (self.level().isClientSide()) {
                 return;
             }
-            this.updateft$teleportOwner(self, hitResult.getLocation());
-            self.discard();
-            ci.cancel();
+            if (this.updateft$teleportOwner(self, hitResult.getLocation())) {
+                self.discard();
+                ci.cancel();
+            }
         }
     }
 
@@ -126,8 +130,10 @@ public abstract class AbstractArrowMixin {
             this.updateft$explode(self, hitResult.getLocation());
             self.discard();
         } else if (effect == ModArrowItem.Effect.TELEPORT) {
-            this.updateft$teleportOwner(self, hitResult.getLocation());
-            self.discard();
+            // 同上：只有真的把主人传走了才消耗，发射器射出的珍珠箭打中实体不消失
+            if (this.updateft$teleportOwner(self, hitResult.getLocation())) {
+                self.discard();
+            }
         } else if (effect == ModArrowItem.Effect.LIGHTNING) {
             this.updateft$summonLightning(self, hitResult.getLocation());
         }
@@ -201,17 +207,24 @@ public abstract class AbstractArrowMixin {
                 Explosion.BlockInteraction.TRIGGER_BLOCK
         ).explode();
 
-        // ② 真正的通电：在箭头命中面的空气格放一个隐形脉冲方块。
+        // ② 真正的通电：在箭头命中面外侧那一格放一个隐形脉冲方块（只在能安全还原时放）。
         // 命中方块本身就是按钮/拉杆/门这类“已被爆炸触发过”的元件时跳过，避免门被触发开、
         // 又被通电粘住，松电瞬间又关上（看起来像没反应）。
         if (!this.updateft$respondsToTrigger(level.getBlockState(hitPos))) {
             BlockPos pulsePos = hitPos.relative(hitResult.getDirection());
             BlockState pulseState = level.getBlockState(pulsePos);
-            // isAir() 太严：雪层、高草、藤蔓、水这类可替换方块会把脉冲方块挡在外面，
-            // 表现为“箭插上了、火花响了，但红石灯不亮”
-            if (level.isInWorldBounds(pulsePos) && (pulseState.isAir() || pulseState.canBeReplaced())) {
-                // 泡在水里就放成含水方块：水面不破、结束后水源原样还回去
-                boolean waterlogged = pulseState.getFluidState().is(FluidTags.WATER);
+
+            if (pulseState.is(ModBlocks.REDSTONE_PULSE)) {
+                // 同一格再被射中：续时。不能只再 scheduleTick 一次——计划刻是按整个
+                // ScheduledTick（含到期时刻）去重的，旧的不会被覆盖，会先到点把方块清掉。
+                // 所以先清掉这一格待执行的方块刻，再排一个完整的持续时间。
+                level.getBlockTicks().clearArea(BoundingBox.fromCorners(pulsePos, pulsePos));
+                level.scheduleTick(pulsePos, ModBlocks.REDSTONE_PULSE, RedstonePulseBlock.DURATION);
+            } else if (level.isInWorldBounds(pulsePos) && this.updateft$canHostPulse(pulseState)) {
+                // 只接受空气和纯水水源。脉冲方块 8 tick 后只能还原成空气或水源，
+                // 放到雪层、高草、含水海草、流动水上等于把那一格原本的东西吃掉，
+                // 所以这些位置宁可不放（只有上面的 TRIGGER_BLOCK 触发）。
+                boolean waterlogged = pulseState.is(Blocks.WATER);
                 level.setBlock(pulsePos, ModBlocks.REDSTONE_PULSE.defaultBlockState()
                         .setValue(RedstonePulseBlock.WATERLOGGED, waterlogged), Block.UPDATE_ALL);
                 level.scheduleTick(pulsePos, ModBlocks.REDSTONE_PULSE, RedstonePulseBlock.DURATION);
@@ -240,17 +253,31 @@ public abstract class AbstractArrowMixin {
     }
 
     /**
-     * 珍珠箭：把射手传送到命中点，效果参考原版末影珍珠（落点位置 + 3 点摔落伤害 + 传送音效/粒子）。
-     * 只由服务端调用。
+     * 脉冲方块只能放在"8 tick 后能原样还回去"的位置：空气，或水源方块。
+     * <p>
+     * 雪层、高草、含水海草、流动水一律不放——脉冲方块结束时只能变回空气或水源，
+     * 放在这些位置上等于把原本的方块吃掉（1.0.0 的取舍；记录原方块的完整还原留给 1.0.1 的 BlockEntity）。
      */
     @Unique
-    private void updateft$teleportOwner(AbstractArrow self, Vec3 hit) {
+    private boolean updateft$canHostPulse(BlockState state) {
+        return state.isAir() || (state.is(Blocks.WATER) && state.getFluidState().isSource());
+    }
+
+    /**
+     * 珍珠箭：把射手传送到命中点，效果参考原版末影珍珠（落点位置 + 3 点摔落伤害 + 传送音效/粒子）。
+     * 只由服务端调用。
+     *
+     * @return 真的传送了才返回 {@code true}；没有主人（发射器射出的）、主人已经退出、
+     *         或传送被拒绝时返回 {@code false}，调用方据此决定要不要消耗这支箭
+     */
+    @Unique
+    private boolean updateft$teleportOwner(AbstractArrow self, Vec3 hit) {
         if (!(self.level() instanceof ServerLevel level)) {
-            return;
+            return false;
         }
         Entity owner = self.getOwner();
         if (owner == null || owner.isRemoved()) {
-            return;
+            return false;
         }
 
         Vec3 from = self.position();
@@ -259,7 +286,9 @@ public abstract class AbstractArrowMixin {
         Vec3 offset = motion.lengthSqr() > 1.0E-7D ? motion.normalize().scale(0.6D) : Vec3.ZERO;
         Vec3 dest = this.updateft$findSafeDestination(level, owner, hit.subtract(offset));
 
-        owner.teleportTo(level, dest.x, dest.y, dest.z, Set.of(), owner.getYRot(), owner.getXRot(), false);
+        if (!owner.teleportTo(level, dest.x, dest.y, dest.z, Set.of(), owner.getYRot(), owner.getXRot(), false)) {
+            return false;
+        }
         // 清掉传送前累积的下落距离，否则边掉边射会被“补算”一次摔落伤害（原版末影珍珠同样会重置）
         owner.resetFallDistance();
         // 收 3 点摔落伤害（原版末影珍珠是 5 点，这里稍微轻一些）
@@ -268,6 +297,7 @@ public abstract class AbstractArrowMixin {
         level.sendParticles(ParticleTypes.PORTAL, from.x, from.y, from.z, 32, 0.3D, 0.3D, 0.3D, 0.12D);
         level.sendParticles(ParticleTypes.PORTAL, dest.x, dest.y + 0.9D, dest.z, 48, 0.4D, 0.6D, 0.4D, 0.15D);
         level.playSound(null, dest.x, dest.y, dest.z, SoundEvents.PLAYER_TELEPORT, SoundSource.PLAYERS, 1.0F, 1.0F);
+        return true;
     }
 
     /** 从上往下找一个不会卡住实体的落点，最多向上挪 3 格 */

@@ -26,6 +26,9 @@ import net.minecraft.world.level.material.Fluids;
  * <p>
  * 带 {@link #WATERLOGGED} 是为了水下也能用：直接在水里放一个非含水方块会把水源吃掉、
  * 留下一个洞；含水状态下水面不变，8 tick 后把水源还回去，玩家看不出任何异常。
+ * <p>
+ * 因为结束时只能还原成空气或水源，它只应被放在这两种格子上；
+ * 放置前的过滤在 {@code AbstractArrowMixin#updateft$canHostPulse}。
  */
 public class RedstonePulseBlock extends Block implements SimpleWaterloggedBlock {
     public static final MapCodec<RedstonePulseBlock> CODEC = simpleCodec(RedstonePulseBlock::new);
