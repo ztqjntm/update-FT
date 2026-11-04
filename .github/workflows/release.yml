@@ -285,6 +285,10 @@ jobs:
 
           MC_ID="$(jq -r --arg n "$MC_VERSION" '[.[] | select(.name == $n) | .id] | .[0] // empty' /tmp/cf-versions.json)"
           FABRIC_ID="$(jq -r '[.[] | select(.name == "Fabric") | .id] | .[0] // empty' /tmp/cf-versions.json)"
+          # CurseForge 还要求至少选一个「环境」版本，漏了会返回 400 / errorCode 1021。
+          # 本模组客户端与服务端都要装，所以两个都带上。
+          CLIENT_ID="$(jq -r '[.[] | select(.name == "Client") | .id] | .[0] // empty' /tmp/cf-versions.json)"
+          SERVER_ID="$(jq -r '[.[] | select(.name == "Server") | .id] | .[0] // empty' /tmp/cf-versions.json)"
           if [ -z "$MC_ID" ]; then
             echo "::error::CurseForge 版本列表里找不到 Minecraft '${MC_VERSION}'"
             exit 1
@@ -293,7 +297,12 @@ jobs:
             echo "::error::CurseForge 版本列表里找不到 'Fabric'"
             exit 1
           fi
-          echo "版本 ID：Minecraft ${MC_VERSION}=${MC_ID}，Fabric=${FABRIC_ID}"
+          if [ -z "$CLIENT_ID" ] || [ -z "$SERVER_ID" ]; then
+            ENV_HINT="$(jq -r '[.[] | select(.name | ascii_downcase | test("client|server")) | "\(.name)=\(.id)"] | join(",")' /tmp/cf-versions.json 2>/dev/null | cut -c1-300)"
+            echo "::error::找不到环境版本 ID（Client/Server）；候选：${ENV_HINT}"
+            exit 1
+          fi
+          echo "版本 ID：Minecraft ${MC_VERSION}=${MC_ID}，Fabric=${FABRIC_ID}，Client=${CLIENT_ID}，Server=${SERVER_ID}"
 
           if [ "$PRERELEASE" = "true" ]; then
             RELEASE_TYPE=beta
@@ -312,8 +321,10 @@ jobs:
                 --arg releaseType "$RELEASE_TYPE" \
                 --argjson mc "$MC_ID" \
                 --argjson fabric "$FABRIC_ID" \
+                --argjson client "$CLIENT_ID" \
+                --argjson server "$SERVER_ID" \
                 '{displayName: $name, changelog: $changelog, changelogType: "markdown",
-                  releaseType: $releaseType, gameVersions: [$mc, $fabric]}' \
+                  releaseType: $releaseType, gameVersions: [$mc, $fabric, $client, $server]}' \
             > /tmp/cf-metadata.json
 
           # --form-string 而不是 -F：changelog 里的引号、分号、@ 不会被 curl 当语法解析。
@@ -329,7 +340,7 @@ jobs:
               # 把服务端返回体塞进 annotation：job 日志要管理员权限，annotation 是公开可读的。
               DETAIL="$(tr -d '\r' < /tmp/cf-upload.json 2>/dev/null | tr '\n' ' ' | cut -c1-500)"
               MC_LIST="$(jq -r --arg n "$MC_VERSION" '[.[] | select(.name == $n) | "\(.id)/type\(.gameVersionTypeID)"] | join(",")' /tmp/cf-versions.json 2>/dev/null || echo '?')"
-              echo "::error::CurseForge 上传失败（HTTP ${HTTP}）：${DETAIL}｜gameVersions=[${MC_ID},${FABRIC_ID}]，${MC_VERSION} 命中 ${MC_LIST}"
+              echo "::error::CurseForge 上传失败（HTTP ${HTTP}）：${DETAIL}｜gameVersions=[${MC_ID},${FABRIC_ID},${CLIENT_ID},${SERVER_ID}]，${MC_VERSION} 命中 ${MC_LIST}"
               exit 1
               ;;
           esac

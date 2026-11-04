@@ -116,7 +116,7 @@ update-ft/
 | `gradle/wrapper/gradle-wrapper.jar` | Wrapper 引导程序本体。 |
 | `gradle/wrapper/gradle-wrapper.properties` | 指定 Gradle 版本（9.7.1）与下载地址，当前指向腾讯云镜像，官方地址被注释掉；换网络环境时改这里。 |
 | `.github/workflows/build.yml` | CI：push / PR 时用 JDK 21 跑 `./gradlew build`，把 `build/libs/` 上传为构建产物。 |
-| `.github/workflows/release.yml` | 发布：push `v*` tag（或手动指定 tag）时校验 `mod_version` 与 tag 一致 → 构建 → 校验 jar 内 `fabric.mod.json` 的版本 → 用 CHANGELOG 段落（缺失时用自动生成）创建 GitHub Release，上传主 jar 与 sources jar；版本号带 `-` 时自动标记为预发布。同时并行上传 CurseForge（项目 `1775183`，仓库 Secrets 里需配置 `CURSEFORGE_TOKEN`；Minecraft / Fabric 的版本 ID 在发布时现查，不写死）。 |
+| `.github/workflows/release.yml` | 发布：push `v*` tag（或手动指定 tag）时校验 `mod_version` 与 tag 一致 → 构建 → 校验 jar 内 `fabric.mod.json` 的版本 → 用 CHANGELOG 段落（缺失时用自动生成）创建 GitHub Release，上传主 jar 与 sources jar；版本号带 `-` 时自动标记为预发布。同时并行上传 CurseForge（项目 `1775183`，仓库 Secrets 里需配置 `CURSEFORGE_TOKEN`；Minecraft / Fabric / Client / Server 的版本 ID 在发布时现查，不写死）。 |
 | `.github/workflows/release.yml` → `CURSEFORGE_TOKEN` | CurseForge 作者 token，在「My Account → API Tokens」生成，只存进 GitHub Secrets，**不要提交进仓库**。没配时 CurseForge 那一步只给 warning 并跳过，不影响 GitHub Release。 |
 | `.gitignore` | 忽略 `build/`、`.gradle/`、IDE 配置等。 |
 | `.gitattributes` | 统一换行符，避免 Windows 下 `gradlew` 被改成 CRLF 而无法执行。 |
