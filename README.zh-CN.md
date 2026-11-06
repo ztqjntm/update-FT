@@ -42,7 +42,7 @@
 
 1. 安装 **Fabric Loader ≥ 0.19.5**（Minecraft **1.21.11**），需要 Java 21。
 2. 把 [Fabric API](https://modrinth.com/mod/fabric-api) 放进 `mods/`。
-3. 把 `update-ft-1.0.0.jar` 放进 `mods/`。
+3. 把 `update-ft-1.0.1.jar` 放进 `mods/`。
 
 单人游戏这样就够了。**开服的话服务端也要装**——模组会注册方块、物品和菜单，只有客户端装是连不上的。
 
@@ -50,13 +50,13 @@
 
 | 渠道 | 版本 | 说明 |
 | --- | --- | --- |
-| [GitHub Releases](https://github.com/ztqjntm/update-FT/releases) | 1.0.0 | 在 `Assets` 里下 jar |
-| [CurseForge](https://www.curseforge.com/minecraft/mc-mods/update-ft) | 1.0.0 | 支持 CurseForge App 一键安装 |
+| [GitHub Releases](https://github.com/ztqjntm/update-FT/releases) | 1.0.1 | 在 `Assets` 里下 jar |
+| [CurseForge](https://www.curseforge.com/minecraft/mc-mods/update-ft) | 1.0.1 | 支持 CurseForge App 一键安装 |
 | Modrinth | — | 未上架 |
 
 | 模组版本 | Minecraft | 加载器 |
 | --- | --- | --- |
-| 1.0.0 | 1.21.11 | Fabric |
+| 1.0.1 | 1.21.11 | Fabric |
 
 ## 九种箭
 
@@ -106,8 +106,8 @@
 几个小规矩：
 
 - 产物只能**整份取走**（右键也是整份），不会出现"只拿 1 支却扣掉一整套材料"。
-- 原料**留在桌子里**：关界面不再退回背包，内容按方块坐标存在存档里，重新打开还是这些，两个人打开同一张桌子也共用一份。
-- **拆桌时里面的东西掉在原地**。产物格只是预览，不会掉出来。
+- **桌面不留东西**：关界面时原料退回背包（装不下的掉在脚下），不会出现“忘了拿就没了”。
+- **拆桌**时（哪怕有人正开着）里面的东西掉在原地。产物格只是预览，不会掉出来。
 
 ## 兼容性与已知限制
 
@@ -115,7 +115,7 @@
 - **配方写死在代码里**：箭头格的白名单是标签，数据包可以往里加材料；但配方本身改不了，也没有配方书和 JEI / REI / EMI 支持，得自己试。
 - **红石箭的脉冲只作用于命中面相邻的那一格**，想让远处亮灯得靠红石粉把信号传过去。
 - **TNT 箭会拆家**，多人服等于无限 TNT，建议配合领地/保护插件使用。
-- 制箭台**没有方块实体**：内容按坐标存在存档数据里，所以重启后还在、玩家之间共享；但漏斗接不进去，桌面也不会展示材料。
+- 制箭台**没有方块实体**：界面开着时内容按坐标存在存档数据里，所以两个人共用一个背包、崩溃也不丢；但漏斗接不进去，桌面也不会展示材料。
 
 ## 常见问题
 
@@ -140,7 +140,7 @@
 ./gradlew build        # Windows 用 gradlew.bat
 ```
 
-产物在 `build/libs/`：`update-ft-1.0.0.jar`（实际用的）和 `-sources.jar`（源码包）。需要 JDK 21。
+产物在 `build/libs/`：`update-ft-1.0.1.jar`（实际用的）和 `-sources.jar`（源码包）。需要 JDK 21。
 
 目录结构、每个文件干什么、注册与合成流程、发布流程，都在 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)。
 
@@ -161,7 +161,7 @@
 | 项目 | 值 |
 | --- | --- |
 | 模组 ID | `update-ft` |
-| 版本 | 1.0.0 |
+| 版本 | 1.0.1 |
 | Minecraft | 1.21.11 |
 | Fabric Loader | ≥ 0.19.5 |
 | Fabric API | 0.141.6+1.21.11 |

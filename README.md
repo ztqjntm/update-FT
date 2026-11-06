@@ -42,7 +42,7 @@ Right-click a fletching table to open a three-slot crafting UI: **tip + stick + 
 
 1. Install **Fabric Loader ≥ 0.19.5** for **Minecraft 1.21.11** (Java 21).
 2. Drop [Fabric API](https://modrinth.com/mod/fabric-api) into `mods/`.
-3. Drop `update-ft-1.0.0.jar` into `mods/`.
+3. Drop `update-ft-1.0.1.jar` into `mods/`.
 
 That is all for singleplayer. **For a server, install it on both sides** — the mod registers blocks, items and a menu, so a client-only install cannot join.
 
@@ -50,13 +50,13 @@ That is all for singleplayer. **For a server, install it on both sides** — the
 
 | Source | Version | Notes |
 | --- | --- | --- |
-| [GitHub Releases](https://github.com/ztqjntm/update-FT/releases) | 1.0.0 | Grab the jar under `Assets` |
-| [CurseForge](https://www.curseforge.com/minecraft/mc-mods/update-ft) | 1.0.0 | One-click install via the CurseForge app |
+| [GitHub Releases](https://github.com/ztqjntm/update-FT/releases) | 1.0.1 | Grab the jar under `Assets` |
+| [CurseForge](https://www.curseforge.com/minecraft/mc-mods/update-ft) | 1.0.1 | One-click install via the CurseForge app |
 | Modrinth | — | Not listed yet |
 
 | Mod version | Minecraft | Loader |
 | --- | --- | --- |
-| 1.0.0 | 1.21.11 | Fabric |
+| 1.0.1 | 1.21.11 | Fabric |
 
 ## The nine arrows
 
@@ -106,8 +106,8 @@ Right-click a fletching table to open the UI. The three input slots are **fixed*
 A few rules:
 
 - The output is taken **as a whole batch** (right-click included), so you can never take 1 arrow and pay for a full set of materials.
-- **Contents stay in the table.** Closing the UI no longer hands the inputs back: they are saved per block position, so reopening the same table shows what you left, and two players share one inventory.
-- **Breaking the table drops whatever is inside** at its position. The output slot is a preview and never drops.
+- **The table never keeps your items.** Closing the UI hands the inputs back to your inventory (whatever does not fit drops at your feet), so nothing can be forgotten inside.
+- **Breaking the table** while someone has it open drops whatever is inside at its position. The output slot is a preview and never drops.
 
 ## Compatibility & known limitations
 
@@ -115,7 +115,7 @@ A few rules:
 - **Recipes are hardcoded**: the tip slot's whitelist is a tag that datapacks can extend, but the recipes themselves have no datapack support, no recipe book and no JEI / REI / EMI integration — players have to experiment.
 - **The redstone pulse only powers the cell adjacent to the face it hit.** To light a lamp further away, route the signal with dust.
 - **TNT arrows grief terrain.** On a multiplayer server that is infinite TNT; pair it with claim/protection plugins.
-- **The fletching table has no block entity**: contents live in the level's saved data, keyed by block position. So they survive restarts and are shared between players, but hoppers cannot feed the table and nothing is displayed on it.
+- **The fletching table has no block entity**: while the UI is open, contents are held in the level's saved data keyed by block position, so two players share one inventory and a crash does not eat them. Hoppers still cannot feed the table and nothing is displayed on it.
 
 ## FAQ
 
@@ -140,7 +140,7 @@ It only rewrites vanilla arrow impact logic (one Mixin) and does not touch other
 ./gradlew build        # gradlew.bat on Windows
 ```
 
-Output lands in `build/libs/`: `update-ft-1.0.0.jar` (the one you install) and `-sources.jar`. Requires JDK 21.
+Output lands in `build/libs/`: `update-ft-1.0.1.jar` (the one you install) and `-sources.jar`. Requires JDK 21.
 
 Project layout, what each file does, the registration and crafting flow, and the release process all live in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) (Chinese).
 
@@ -161,7 +161,7 @@ Project layout, what each file does, the registration and crafting flow, and the
 | Field | Value |
 | --- | --- |
 | Mod ID | `update-ft` |
-| Version | 1.0.0 |
+| Version | 1.0.1 |
 | Minecraft | 1.21.11 |
 | Fabric Loader | ≥ 0.19.5 |
 | Fabric API | 0.141.6+1.21.11 |
