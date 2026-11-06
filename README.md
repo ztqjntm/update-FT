@@ -97,7 +97,7 @@ update-ft/
 ├── LICENSE                          # MPL-2.0
 ├── README.md                        # 本文档
 ├── src/main/
-│   ├── java/ztqjntm/update/         # 通用代码（入口、物品、菜单、配方、Mixin）
+│   ├── java/ztqjntm/update/         # 通用代码（入口、物品、效果、菜单、配方、Mixin）
 │   └── resources/                   # 资源与元数据
 └── src/client/
     └── java/ztqjntm/update/client/  # 仅客户端的代码（入口、Screen）
@@ -134,14 +134,20 @@ update-ft/
 | `block/ModBlocks.java` | 方块注册表。目前只有 `update-ft:redstone_pulse`（隐形红石脉冲），无物品形态、无掉落物，只由红石箭临时放置。 |
 | `block/RedstonePulseBlock.java` | 红石脉冲方块：不渲染（`RenderShape.INVISIBLE`）、无碰撞、可替换，`getSignal`/`getDirectSignal` 固定返回 15 并声明 `isSignalSource`；`tick()` 里把自己变回空气，实现 8 tick 的“脉冲”。 |
 | `item/ModItems.java` | 9 种箭的注册表。`register()` 用 `Item.Properties.setId(ResourceKey)` 绑定 ID 后注册进 `BuiltInRegistries.ITEM`；`initialize()` 把 9 种箭加入创造模式「战斗」页签。数值（伤害加成、命中效果）与悬停介绍的语言键都写在这个文件里。 |
-| `item/ModArrowItem.java` | 自定义箭物品类，继承 `ArrowItem`，多三个字段：`damageBonus`（伤害加成）、`effect`（命中效果枚举 `NONE` / `EXPLOSIVE` / `REDSTONE` / `TELEPORT` / `LIGHTNING`）供 Mixin 读取，`descriptionKeys`（悬停介绍的语言键列表）。覆写的 `appendHoverText` 会把每个键渲染成一行灰色小字。 |
+| `item/ModArrowItem.java` | 自定义箭物品类，继承 `ArrowItem`，多三个字段：`damageBonus`（伤害加成）、`effect`（`ArrowEffect` 实例，决定命中后干什么）、`descriptionKeys`（悬停介绍的语言键列表）。覆写的 `appendHoverText` 会把每个键渲染成一行灰色小字。 |
+| `effect/ArrowEffect.java` | **命中行为的接口**：`onHitBlock` / `onHitEntity` 都返回 `boolean`，表示“这支箭是否应该被消耗”，默认 `false`。不引 `net.fabricmc.*`、不假设调用方一定拿得到 `ServerLevel`——这是三个平台唯一能共享的一层，1.21.1 / 1.20.1 的移植直接复用它。 |
+| `effect/NoneEffect.java` | 普通箭：什么都不做，完全交给原版。 |
+| `effect/ExplosiveEffect.java` | TNT 箭：半径 4、不点火、实体伤害减半，`mobGriefing` 关闭时不破坏方块；命中方块或实体都消耗。 |
+| `effect/RedstonePulseEffect.java` | 红石箭：`TRIGGER_BLOCK` 触发 + 隐形脉冲方块通电（只放空气/水源，同格续时）；命中实体不触发；不消耗。 |
+| `effect/TeleportEffect.java` | 珍珠箭：传送射手 + 3 点摔落伤害；没有主人（发射器）或传送失败时返回 `false`，不消耗。 |
+| `effect/LightningEffect.java` | 铜箭：雷雨天且露天命中时引雷，击杀记在射手头上；不消耗。 |
 | `menu/ModMenuTypes.java` | 注册 `MenuType<FletchingTableMenu>`，ID 为 `update-ft:fletching_table`；客户端用它来决定打开哪个 `Screen`，服务端用它来反序列化菜单。 |
 | `menu/FletchingTableMenu.java` | 制箭台容器逻辑（`AbstractContainerMenu`）：3 个斜向原料格（`InputSlot` 用 `mayPlace` 做栏位限定）+ 1 个产物格 + 玩家背包（坐标与 `ft_gui.png` 一一对应）；监听原料容器变化重算产物；产物格自定义 `onTake` 消耗原料、`tryRemove` 强制整份取走；`quickMoveStack` 按物品类型把 Shift 点击的物品路由到对应原料格；`removed()` 用 `clearContainer` 把原料放回背包。 |
 | `recipe/FletchingRecipe.java` | 单个制箭台配方：只保存**箭头材料**的 `Ingredient` 与产物（木棍、羽毛是固定栏位，不必重复写），`matchesTip()` 判断某物品能不能当这种箭的箭头。 |
 | `recipe/FletchingRecipes.java` | 配方表（写死在代码里）与栏位定义：`TIP_SLOT`/`SHAFT_SLOT`/`FLETCHING_SLOT` 三个常量对应界面右上/中间/左下；`findResult()` 先校验中间是木棍、左下是羽毛，再按右上的材料查产物；`isTipMaterial()` 给箭头格做 `mayPlace` 过滤。 |
 | `client/UpdateFtClient.java`（`src/client/java`） | **客户端入口**（`ClientModInitializer`）。调用 `MenuScreens.register` 把 `MenuType` 与 `FletchingTableScreen` 绑定。 |
 | `client/FletchingTableScreen.java`（`src/client/java`） | 界面渲染：176×166 布局，背景用 `update-ft:textures/gui/ft_gui.png`（从 256×256 画布的 (0,0) 取 176×166）；`init()` 里把标题居中；`render()` 末尾手动调 `renderTooltip`（1.21.11 的父类已不再自动调用）。 |
-| `mixin/AbstractArrowMixin.java` | 箭矢行为的核心 Mixin：① `@ModifyArg` 改 `onHitEntity` 里 `Entity.hurtOrSimulate(DamageSource, float)` 的伤害参数，加上 `damageBonus`；② `onHitBlock` 头部注入，按 `effect` 分派——TNT 箭爆炸并移除，红石箭先做 `TRIGGER_BLOCK` 触发、再在命中面放隐形脉冲方块通电（不取消原版逻辑，箭会照常插进方块）；③ `onHitEntity` 在所有 return 处注入，TNT 箭命中实体时爆炸并移除。所有爆炸、放方块与移除都只在服务端执行，客户端交回原版逻辑，由服务端包同步。 |
+| `mixin/AbstractArrowMixin.java` | 箭矢与原版的**唯一接缝**（89 行）：① `@ModifyArg` 改 `onHitEntity` 里 `Entity.hurtOrSimulate(DamageSource, float)` 的伤害参数，加上 `damageBonus`；② `onHitBlock` 头部注入，一行分派——`arrow.effect().onHitBlock(level, self, hit)`；③ `onHitEntity` 在所有 return 处注入，分派到 `onHitEntity(...)`。效果返回 `true` 就移除箭并取消原版流程，返回 `false` 就放手让原版把箭插进方块。客户端拿不到 `ServerLevel`，直接交回原版，由服务端包同步。具体效果全在 `effect/` 包里，Mixin 不碰任何数值。 |
 
 ### 资源与元数据（`src/main/resources/`）
 
@@ -166,7 +172,7 @@ update-ft/
 
 **开界面与合成**：主手右键制箭台 → 服务端 `UseBlockCallback` 返回 `SUCCESS` 并 `openMenu` → 服务端创建 `FletchingTableMenu` + `SimpleContainer(3)` → 发送 `ClientboundOpenScreenPacket` → 客户端用 `MenuType` 新建菜单与 `FletchingTableScreen`，槽位内容由 `AbstractContainerMenu` 自动同步 → 放入三样原料后 `slotsChanged` 调用 `FletchingRecipes.findResult()` 把产物写进产物格 → 取走产物时消耗每个原料 1 个 → 关闭时 `clearContainer` 把原料放回背包。
 
-**射击命中**：弓/弩/发射器发射 → `ArrowItem.createArrow()` 生成 `Arrow` 实体（`pickupItemStack` 即本模组的箭）→ `AbstractArrowMixin` 通过 `getPickupItemStackOrigin()` 认出箭的类型 → 命中实体时加算伤害、TNT 箭额外爆炸；命中方块时 TNT 箭爆炸并移除，红石箭则以命中点为中心激发一次 `TRIGGER_BLOCK` 爆炸（只触发方块，不破坏、不伤人）后照常插进方块。
+**射击命中**：弓/弩/发射器发射 → `ArrowItem.createArrow()` 生成 `Arrow` 实体（`pickupItemStack` 即本模组的箭）→ `AbstractArrowMixin` 用 `getPickupItemStackOrigin()` 认出是哪个物品 → 伤害走 `@ModifyArg` 加 `damageBonus` → 命中回调一行分派给 `arrow.effect()`，由对应的 `ArrowEffect` 决定做什么以及要不要消耗这支箭：TNT 箭炸完消失、珍珠箭传送成功才消失，红石箭和铜箭照常插在地上可以捡回。
 
 ## 已知限制 / TODO
 

@@ -8,6 +8,11 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
 import ztqjntm.update.UpdateFt;
+import ztqjntm.update.effect.ExplosiveEffect;
+import ztqjntm.update.effect.LightningEffect;
+import ztqjntm.update.effect.NoneEffect;
+import ztqjntm.update.effect.RedstonePulseEffect;
+import ztqjntm.update.effect.TeleportEffect;
 
 import java.util.function.Function;
 
@@ -21,58 +26,58 @@ public class ModItems {
 
     // 参数依次是：物品 ID、伤害加成、命中效果、悬停介绍的语言文件 key（每个 key 一行）
     public static final ModArrowItem STONE_ARROW = register("stone_arrow",
-            props -> new ModArrowItem(props, 0, ModArrowItem.Effect.NONE,
+            props -> new ModArrowItem(props, 0, NoneEffect.INSTANCE,
                     "tooltip.update-ft.stone_arrow.1",
                     "tooltip.update-ft.stone_arrow.2"),
             new Item.Properties());
 
     public static final ModArrowItem COPPER_ARROW = register("copper_arrow",
-            props -> new ModArrowItem(props, 0, ModArrowItem.Effect.LIGHTNING,
+            props -> new ModArrowItem(props, 0, LightningEffect.INSTANCE,
                     "tooltip.update-ft.copper_arrow.1",
                     "tooltip.update-ft.copper_arrow.2",
                     "tooltip.update-ft.copper_arrow.3"),
             new Item.Properties());
 
     public static final ModArrowItem IRON_ARROW = register("iron_arrow",
-            props -> new ModArrowItem(props, 1, ModArrowItem.Effect.NONE,
+            props -> new ModArrowItem(props, 1, NoneEffect.INSTANCE,
                     "tooltip.update-ft.iron_arrow.1",
                     "tooltip.update-ft.iron_arrow.2"),
             new Item.Properties());
 
     public static final ModArrowItem DIAMOND_ARROW = register("diamond_arrow",
-            props -> new ModArrowItem(props, 2, ModArrowItem.Effect.NONE,
+            props -> new ModArrowItem(props, 2, NoneEffect.INSTANCE,
                     "tooltip.update-ft.diamond_arrow.1",
                     "tooltip.update-ft.diamond_arrow.2"),
             new Item.Properties());
 
     public static final ModArrowItem GOLD_ARROW = register("gold_arrow",
-            props -> new ModArrowItem(props, -1, ModArrowItem.Effect.NONE,
+            props -> new ModArrowItem(props, -1, NoneEffect.INSTANCE,
                     "tooltip.update-ft.gold_arrow.1",
                     "tooltip.update-ft.gold_arrow.2"),
             new Item.Properties());
 
     public static final ModArrowItem NETHERITE_ARROW = register("netherite_arrow",
-            props -> new ModArrowItem(props, 4, ModArrowItem.Effect.NONE,
+            props -> new ModArrowItem(props, 4, NoneEffect.INSTANCE,
                     "tooltip.update-ft.netherite_arrow.1",
                     "tooltip.update-ft.netherite_arrow.2"),
             new Item.Properties());
 
     public static final ModArrowItem TNT_ARROW = register("tnt_arrow",
-            props -> new ModArrowItem(props, -1, ModArrowItem.Effect.EXPLOSIVE,
+            props -> new ModArrowItem(props, -1, ExplosiveEffect.INSTANCE,
                     "tooltip.update-ft.tnt_arrow.1",
                     "tooltip.update-ft.tnt_arrow.2",
                     "tooltip.update-ft.tnt_arrow.3"),
             new Item.Properties());
 
     public static final ModArrowItem REDSTONE_ARROW = register("redstone_arrow",
-            props -> new ModArrowItem(props, -1, ModArrowItem.Effect.REDSTONE,
+            props -> new ModArrowItem(props, -1, RedstonePulseEffect.INSTANCE,
                     "tooltip.update-ft.redstone_arrow.1",
                     "tooltip.update-ft.redstone_arrow.2",
                     "tooltip.update-ft.redstone_arrow.3"),
             new Item.Properties());
 
     public static final ModArrowItem PEARL_ARROW = register("pearl_arrow",
-            props -> new ModArrowItem(props, 0, ModArrowItem.Effect.TELEPORT,
+            props -> new ModArrowItem(props, 0, TeleportEffect.INSTANCE,
                     "tooltip.update-ft.pearl_arrow.1",
                     "tooltip.update-ft.pearl_arrow.2",
                     "tooltip.update-ft.pearl_arrow.3"),

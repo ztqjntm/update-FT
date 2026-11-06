@@ -7,31 +7,19 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.TooltipDisplay;
+import ztqjntm.update.effect.ArrowEffect;
+import ztqjntm.update.effect.NoneEffect;
 
 import java.util.List;
 import java.util.function.Consumer;
 
 public class ModArrowItem extends ArrowItem {
-    /** 命中后的特殊行为 */
-    public enum Effect {
-        /** 普通箭 */
-        NONE,
-        /** 命中方块或实体时爆炸（TNT 箭） */
-        EXPLOSIVE,
-        /** 命中方块时激发一次红石脉冲（红石箭） */
-        REDSTONE,
-        /** 命中后把射手传送到落点（珍珠箭） */
-        TELEPORT,
-        /** 雷雨天命中时召唤闪电（铜箭） */
-        LIGHTNING
-    }
-
     private final int damageBonus;
-    private final Effect effect;
+    private final ArrowEffect effect;
     /** 悬停时显示的小字介绍，每一项对应语言文件里的一行 */
     private final List<String> descriptionKeys;
 
-    public ModArrowItem(Item.Properties properties, int damageBonus, Effect effect, String... descriptionKeys) {
+    public ModArrowItem(Item.Properties properties, int damageBonus, ArrowEffect effect, String... descriptionKeys) {
         super(properties);
         this.damageBonus = damageBonus;
         this.effect = effect;
@@ -42,7 +30,8 @@ public class ModArrowItem extends ArrowItem {
         return this.damageBonus;
     }
 
-    public Effect getEffect() {
+    /** 命中后的特殊行为；普通箭用 {@link NoneEffect#INSTANCE} */
+    public ArrowEffect effect() {
         return this.effect;
     }
 
