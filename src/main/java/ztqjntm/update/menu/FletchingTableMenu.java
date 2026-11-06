@@ -1,6 +1,7 @@
 package ztqjntm.update.menu;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
 import net.minecraft.world.ContainerListener;
 import net.minecraft.world.SimpleContainer;
@@ -243,8 +244,11 @@ public class FletchingTableMenu extends AbstractContainerMenu {
 	}
 
 	/**
-	 * 关界面时把原料还给玩家——和工作台一致：优先塞进背包，塞不下才掉在地上，
-	 * 而不是像之前那样直接全部扔到地上。产物格只是预览，直接清空。
+	 * 关界面时**不**再把原料还给玩家：容器由 {@link FletchingTableData} 按坐标持有，
+	 * 关掉再打开还是原来的东西，两个玩家也共用同一份。只有拆桌（或桌子被炸掉）才掉出来。
+	 * <p>
+	 * 唯一的例外是“界面还开着的时候桌子没了”：这时 {@code stillValid} 会让界面关闭，
+	 * 我们顺手把内容物掉在原地，否则它们会一直留在存档里，再也取不出来。
 	 */
 	@Override
 	public void removed(Player player) {
@@ -255,9 +259,10 @@ public class FletchingTableMenu extends AbstractContainerMenu {
 			simple.removeListener(this.inputListener);
 		}
 
-		// 客户端也会回调 removed()，但它不做实际入包，避免刷出幽灵物品
-		if (!player.level().isClientSide()) {
-			this.clearContainer(player, this.input);
+		// 客户端也会回调 removed()，但它不做任何实际动作，避免刷出幽灵物品
+		if (this.blockPos != null && player.level() instanceof ServerLevel server
+				&& !server.getBlockState(this.blockPos).is(Blocks.FLETCHING_TABLE)) {
+			FletchingTableData.get(server).dropAndRemove(server, this.blockPos);
 		}
 	}
 }

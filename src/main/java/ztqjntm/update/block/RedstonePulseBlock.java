@@ -3,13 +3,15 @@ package ztqjntm.update.block;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.SimpleWaterloggedBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -22,15 +24,15 @@ import net.minecraft.world.level.material.Fluids;
  * 红石箭留下的“红石脉冲”。
  * <p>
  * 不渲染、无碰撞、不可获取，唯一作用是像红石块一样对外输出 15 级红石信号，
- * 持续 {@link #DURATION} tick 后恢复原样（空气，或者原来的水）。
+ * 持续 {@link #DURATION} tick 后把被顶掉的原方块原样还回去。
+ * <p>
+ * 原方块存在 {@link RedstonePulseBlockEntity} 里，所以它现在可以放在任何“可替换”的方块上
+ * （雪层、高草、含水海草、流动水……），不再局限于空气和水源。
  * <p>
  * 带 {@link #WATERLOGGED} 是为了水下也能用：直接在水里放一个非含水方块会把水源吃掉、
- * 留下一个洞；含水状态下水面不变，8 tick 后把水源还回去，玩家看不出任何异常。
- * <p>
- * 因为结束时只能还原成空气或水源，它只应被放在这两种格子上；
- * 放置前的过滤在 {@code AbstractArrowMixin#updateft$canHostPulse}。
+ * 留下一个洞；含水状态下水面不变，8 tick 后把原来的流体状态还回去，玩家看不出任何异常。
  */
-public class RedstonePulseBlock extends Block implements SimpleWaterloggedBlock {
+public class RedstonePulseBlock extends Block implements SimpleWaterloggedBlock, EntityBlock {
     public static final MapCodec<RedstonePulseBlock> CODEC = simpleCodec(RedstonePulseBlock::new);
 
     /** 脉冲持续时间（tick） */
@@ -88,13 +90,20 @@ public class RedstonePulseBlock extends Block implements SimpleWaterloggedBlock 
     }
 
     @Override
-    protected void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
-        if (state.getValue(WATERLOGGED)) {
-            // 水下：把原来占住的那格水（水源）还回去，避免在水体里留下一个洞
-            level.setBlock(pos, Blocks.WATER.defaultBlockState(), Block.UPDATE_ALL);
-        } else {
-            // 空气中：恢复成空气（会正常触发周围红石元件的信号更新）
-            level.removeBlock(pos, false);
+    public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+        return new RedstonePulseBlockEntity(pos, state);
+    }
+
+    @Override
+    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
+        if (level.isClientSide()) {
+            // 客户端不参与倒计时：还原是服务端的事，客户端等方块更新同步过来
+            return null;
         }
+        return (tickLevel, pos, tickState, blockEntity) -> {
+            if (blockEntity instanceof RedstonePulseBlockEntity pulse) {
+                RedstonePulseBlockEntity.tick(tickLevel, pos, tickState, pulse);
+            }
+        };
     }
 }

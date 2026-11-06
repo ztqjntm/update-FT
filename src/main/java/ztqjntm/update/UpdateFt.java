@@ -1,20 +1,23 @@
 package ztqjntm.update;
 
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.MenuProvider;
-import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.level.block.Blocks;
+import ztqjntm.update.block.ModBlockEntities;
 import ztqjntm.update.block.ModBlocks;
 import ztqjntm.update.item.ModItems;
+import ztqjntm.update.menu.FletchingTableData;
 import ztqjntm.update.menu.FletchingTableMenu;
 import ztqjntm.update.menu.ModMenuTypes;
 
@@ -23,9 +26,10 @@ public class UpdateFt implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
-		ModItems.initialize();      // 注册物品
-		ModBlocks.initialize();     // 注册方块（红石脉冲）
-		ModMenuTypes.initialize();  // 注册 MenuType
+		ModItems.initialize();          // 注册物品
+		ModBlocks.initialize();         // 注册方块（红石脉冲）
+		ModBlockEntities.initialize();  // 红石脉冲的方块实体（要在方块之后）
+		ModMenuTypes.initialize();      // 注册 MenuType
 
 		// 右键制箭台 → 打开 GUI（不需要方块实体，也不需要 Mixin）
 		UseBlockCallback.EVENT.register((player, level, hand, hitResult) -> {
@@ -49,6 +53,7 @@ public class UpdateFt implements ModInitializer {
 			}
 
 			if (!level.isClientSide()) {
+				ServerLevel serverLevel = (ServerLevel) level;
 				// 菜单需要记住方块坐标，用它在 stillValid 里判断“走远了 / 方块被拆了”
 				player.openMenu(new MenuProvider() {
 					@Override
@@ -59,8 +64,9 @@ public class UpdateFt implements ModInitializer {
 
 					@Override
 					public AbstractContainerMenu createMenu(int containerId, Inventory inventory, Player p) {
+						// 容器按坐标存在存档里：关界面不清空、两个玩家共享、重启还在
 						return new FletchingTableMenu(containerId, inventory,
-								new SimpleContainer(FletchingTableMenu.INPUT_SIZE), pos);
+								FletchingTableData.get(serverLevel).getOrCreate(serverLevel, pos), pos);
 					}
 				});
 			}
@@ -68,6 +74,14 @@ public class UpdateFt implements ModInitializer {
 			// 两边都返回 SUCCESS：客户端不做原版右键预测，
 			// 否则手里拿着方块时会先预测一次放置（幽灵方块 + 音效），再被服务端纠正。
 			return InteractionResult.SUCCESS;
+		});
+
+		// 拆桌：把里面的东西掉在原地并删掉存档条目。
+		// 爆炸/活塞没有对应事件，那种情况由 FletchingTableData#getOrCreate 兜底。
+		PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, blockEntity) -> {
+			if (world instanceof ServerLevel serverLevel && state.is(Blocks.FLETCHING_TABLE)) {
+				FletchingTableData.get(serverLevel).dropAndRemove(serverLevel, pos);
+			}
 		});
 	}
 

@@ -79,7 +79,7 @@ The bonus is added **directly to vanilla's final damage** (vanilla rolls speed a
 
 - **TNT Arrow** — radius 4, no fire, **destroys blocks** (a reusable piece of TNT, essentially). Entity damage is halved, so point-blank shots will not instantly kill you. With `mobGriefing` off it only damages entities and leaves the terrain alone.
 - **Redstone Arrow** — on hitting a block, it triggers buttons, levers, doors, fence gates, trapdoors, bells, candles and bee nests within 2 blocks (without breaking anything), and places an invisible block on the face it hit that **emits signal strength 15 for 8 ticks** — that is what redstone lamps, pistons, dust, dispensers and rails actually respond to. The arrow itself sticks in the block as usual and can be picked up again.
-  - Only **air and water sources** get powered. Snow layers, tall grass, seagrass and flowing water would be eaten by the pulse block, so those spots only get the trigger, not the signal.
+  - It **swaps out whatever occupies that face and puts it back after 8 ticks**, so snow layers, tall grass, seagrass and flowing water all work — nothing gets eaten.
   - Hitting the same spot again just resets the timer; it does not stack a second block.
 - **Pearl Arrow** — teleports the **shooter** to the impact point: 0.6 blocks back along the arrow's incoming direction, then a collision check within 4 blocks of height for a spot that is not inside a block. Costs 3 fall damage (a vanilla ender pearl costs 5). The arrow is consumed — **unless the teleport cannot happen** (e.g. a dispenser-fired arrow has no owner), in which case it sticks in the ground like any other arrow.
 - **Copper Arrow** — only works during a **thunderstorm** with **open sky** above the impact point; underground or indoors it is an ordinary arrow. The bolt is real: it sets fires and can strike you and nearby mobs. Damage and kills are credited to the shooter.
@@ -106,8 +106,8 @@ Right-click a fletching table to open the UI. The three input slots are **fixed*
 A few rules:
 
 - The output is taken **as a whole batch** (right-click included), so you can never take 1 arrow and pay for a full set of materials.
-- Closing the UI **returns inputs to your inventory** first, and only drops them on the ground if the inventory is full. The output slot is a preview and never drops.
-- The UI **does not persist**: close it and the contents go back to you. Two players opening the same table get separate containers.
+- **Contents stay in the table.** Closing the UI no longer hands the inputs back: they are saved per block position, so reopening the same table shows what you left, and two players share one inventory.
+- **Breaking the table drops whatever is inside** at its position. The output slot is a preview and never drops.
 
 ## Compatibility & known limitations
 
@@ -115,7 +115,7 @@ A few rules:
 - **Recipes are hardcoded**: the tip slot's whitelist is a tag that datapacks can extend, but the recipes themselves have no datapack support, no recipe book and no JEI / REI / EMI integration — players have to experiment.
 - **The redstone pulse only powers the cell adjacent to the face it hit.** To light a lamp further away, route the signal with dust.
 - **TNT arrows grief terrain.** On a multiplayer server that is infinite TNT; pair it with claim/protection plugins.
-- **The fletching table has no block entity**: hoppers cannot feed it, containers do not persist, and nothing is displayed on the table itself.
+- **The fletching table has no block entity**: contents live in the level's saved data, keyed by block position. So they survive restarts and are shared between players, but hoppers cannot feed the table and nothing is displayed on it.
 
 ## FAQ
 

@@ -6,22 +6,22 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.ServerExplosion;
 import net.minecraft.world.level.block.BeehiveBlock;
 import net.minecraft.world.level.block.BellBlock;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CandleBlock;
 import net.minecraft.world.level.block.LeverBlock;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import ztqjntm.update.NoEntityDamageCalculator;
 import ztqjntm.update.block.ModBlocks;
 import ztqjntm.update.block.RedstonePulseBlock;
+import ztqjntm.update.block.RedstonePulseBlockEntity;
 
 /**
  * 红石箭：命中方块时激发一次红石脉冲，分两步：
@@ -32,6 +32,9 @@ import ztqjntm.update.block.RedstonePulseBlock;
  *     红石灯、活塞、红石粉、发射器、铁轨这些靠信号强度工作的元件才会亮/动作。</li>
  * </ol>
  * 两步缺一不可——风弹那套机制本身并不会给方块通电（原版风弹也点不亮红石灯）。
+ * <p>
+ * 脉冲方块会把它顶掉的原方块记在方块实体里，所以雪层、高草、含水海草、流动水这些位置也放得进去，
+ * 8 tick 后 1:1 还回去；同一格再被射中只续时，不覆盖最初记下的原方块。
  * <p>
  * 箭本身不消耗：命中后照常插进方块，可以捡回来。因此两个命中回调都返回 {@code false}；
  * 命中实体只算普通伤害，不触发脉冲。
@@ -72,22 +75,28 @@ public final class RedstonePulseEffect implements ArrowEffect {
         // 又被通电粘住，松电瞬间又关上（看起来像没反应）。
         if (!respondsToTrigger(level.getBlockState(hitPos))) {
             BlockPos pulsePos = hitPos.relative(hitResult.getDirection());
-            BlockState pulseState = level.getBlockState(pulsePos);
+            BlockState original = level.getBlockState(pulsePos);
 
-            if (pulseState.is(ModBlocks.REDSTONE_PULSE)) {
-                // 同一格再被射中：续时。不能只再 scheduleTick 一次——计划刻是按整个
-                // ScheduledTick（含到期时刻）去重的，旧的不会被覆盖，会先到点把方块清掉。
-                // 所以先清掉这一格待执行的方块刻，再排一个完整的持续时间。
-                level.getBlockTicks().clearArea(BoundingBox.fromCorners(pulsePos, pulsePos));
-                level.scheduleTick(pulsePos, ModBlocks.REDSTONE_PULSE, RedstonePulseBlock.DURATION);
-            } else if (level.isInWorldBounds(pulsePos) && canHostPulse(pulseState)) {
-                // 只接受空气和纯水水源。脉冲方块 8 tick 后只能还原成空气或水源，
-                // 放到雪层、高草、含水海草、流动水上等于把那一格原本的东西吃掉，
-                // 所以这些位置宁可不放（只有上面的 TRIGGER_BLOCK 触发）。
-                boolean waterlogged = pulseState.is(Blocks.WATER);
+            if (original.is(ModBlocks.REDSTONE_PULSE)) {
+                // 同格再被射中：只续时，不覆盖最初记下的原方块
+                if (level.getBlockEntity(pulsePos) instanceof RedstonePulseBlockEntity pulse) {
+                    pulse.extend();
+                } else {
+                    // 方块在、方块实体不在（只可能是存档异常）：撤掉，免得留下永久的信号源
+                    level.removeBlock(pulsePos, false);
+                }
+            } else if (level.isInWorldBounds(pulsePos) && (original.isAir() || original.canBeReplaced())) {
+                // 任何“可替换”的方块都能放：原状态记进方块实体，8 tick 后原样还回去。
+                // 之前只敢放空气和水源，是因为没有地方存“原本是什么”。
+                boolean waterlogged = original.getFluidState().is(FluidTags.WATER);
                 level.setBlock(pulsePos, ModBlocks.REDSTONE_PULSE.defaultBlockState()
                         .setValue(RedstonePulseBlock.WATERLOGGED, waterlogged), Block.UPDATE_ALL);
-                level.scheduleTick(pulsePos, ModBlocks.REDSTONE_PULSE, RedstonePulseBlock.DURATION);
+                if (level.getBlockEntity(pulsePos) instanceof RedstonePulseBlockEntity pulse) {
+                    pulse.arm(original);
+                } else {
+                    // 理论上不会发生；真发生了宁可撤掉，也别留一个永久的 15 级信号源
+                    level.removeBlock(pulsePos, false);
+                }
             }
         }
 
@@ -109,15 +118,5 @@ public final class RedstonePulseEffect implements ArrowEffect {
                 || block instanceof BellBlock
                 || block instanceof CandleBlock
                 || block instanceof BeehiveBlock;
-    }
-
-    /**
-     * 脉冲方块只能放在"8 tick 后能原样还回去"的位置：空气，或水源方块。
-     * <p>
-     * 雪层、高草、含水海草、流动水一律不放——脉冲方块结束时只能变回空气或水源，
-     * 放在这些位置上等于把原本的方块吃掉（1.0.0 的取舍；记录原方块的完整还原留给后续的 BlockEntity）。
-     */
-    private static boolean canHostPulse(BlockState state) {
-        return state.isAir() || (state.is(Blocks.WATER) && state.getFluidState().isSource());
     }
 }
