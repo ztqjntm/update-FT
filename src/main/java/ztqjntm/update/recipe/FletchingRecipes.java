@@ -5,6 +5,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
 import ztqjntm.update.item.ModItems;
+import ztqjntm.update.tag.ModTags;
 
 import java.util.List;
 
@@ -19,6 +20,9 @@ import java.util.List;
  * </ul>
  * 所以每条配方只需要描述“箭头材料 → 产物”。想做新箭，往 {@link #recipes()} 里加一行即可
  * （目前写死在代码里，以后要支持数据包再换成自定义 RecipeType + JSON）。
+ * <p>
+ * 箭头格“能放什么”和“能做出什么”是两件事：能放什么由物品标签
+ * {@link ModTags#FLETCHING_TIPS} 决定（数据包可改，{@code /reload} 生效），能做出什么仍由下面的配方表决定。
  */
 public final class FletchingRecipes {
     public static final int TIP_SLOT = 0;
@@ -55,17 +59,14 @@ public final class FletchingRecipes {
         return recipes;
     }
 
-    /** 这个物品能不能当某种箭的箭头（箭头格用它做 mayPlace 过滤） */
+    /**
+     * 这个物品能不能放进箭头格（{@code InputSlot.mayPlace} 与 Shift 点击的路由都用它）。
+     * <p>
+     * 只查物品标签，不遍历配方表：数据包往 tag 里加材料即可生效，也不用担心客户端拿不到配方数据——
+     * 标签是原版同步的，客户端和服务端看到的是同一份。
+     */
     public static boolean isTipMaterial(ItemStack stack) {
-        if (stack.isEmpty()) {
-            return false;
-        }
-        for (FletchingRecipe recipe : recipes()) {
-            if (recipe.matchesTip(stack)) {
-                return true;
-            }
-        }
-        return false;
+        return !stack.isEmpty() && stack.is(ModTags.FLETCHING_TIPS);
     }
 
     /**

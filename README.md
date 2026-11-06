@@ -112,7 +112,7 @@ A few rules:
 ## Compatibility & known limitations
 
 - **Fabric and Minecraft 1.21.11 only.** No Forge / NeoForge plans.
-- **Recipes are hardcoded**: no datapack support, no recipe book, no JEI / REI / EMI integration — players have to experiment.
+- **Recipes are hardcoded**: the tip slot's whitelist is a tag that datapacks can extend, but the recipes themselves have no datapack support, no recipe book and no JEI / REI / EMI integration — players have to experiment.
 - **The redstone pulse only powers the cell adjacent to the face it hit.** To light a lamp further away, route the signal with dust.
 - **TNT arrows grief terrain.** On a multiplayer server that is infinite TNT; pair it with claim/protection plugins.
 - **The fletching table has no block entity**: hoppers cannot feed it, containers do not persist, and nothing is displayed on the table itself.

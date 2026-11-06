@@ -85,7 +85,7 @@ update-ft/
 | `menu/ModMenuTypes.java` | 注册 `MenuType<FletchingTableMenu>`，ID 为 `update-ft:fletching_table`；客户端用它来决定打开哪个 `Screen`，服务端用它来反序列化菜单。 |
 | `menu/FletchingTableMenu.java` | 制箭台容器逻辑（`AbstractContainerMenu`）：3 个斜向原料格（`InputSlot` 用 `mayPlace` 做栏位限定）+ 1 个产物格 + 玩家背包（坐标与 `ft_gui.png` 一一对应）；监听原料容器变化重算产物；产物格自定义 `onTake` 消耗原料、`tryRemove` 强制整份取走；`quickMoveStack` 按物品类型把 Shift 点击的物品路由到对应原料格；`removed()` 用 `clearContainer` 把原料放回背包。 |
 | `recipe/FletchingRecipe.java` | 单个制箭台配方：只保存**箭头材料**的 `Ingredient` 与产物（木棍、羽毛是固定栏位，不必重复写），`matchesTip()` 判断某物品能不能当这种箭的箭头。 |
-| `recipe/FletchingRecipes.java` | 配方表（写死在代码里）与栏位定义：`TIP_SLOT`/`SHAFT_SLOT`/`FLETCHING_SLOT` 三个常量对应界面右上/中间/左下；`findResult()` 先校验中间是木棍、左下是羽毛，再按右上的材料查产物；`isTipMaterial()` 给箭头格做 `mayPlace` 过滤。 |
+| `recipe/FletchingRecipes.java` | 配方表（写死在代码里）与栏位定义：`TIP_SLOT`/`SHAFT_SLOT`/`FLETCHING_SLOT` 三个常量对应界面右上/中间/左下；`findResult()` 先校验中间是木棍、左下是羽毛，再按右上的材料查产物；`isTipMaterial()` 给箭头格做 `mayPlace` 过滤，**只查 `ModTags.FLETCHING_TIPS` 标签**，不再遍历配方表。 |
 | `client/UpdateFtClient.java` | **客户端入口**（`ClientModInitializer`）。调用 `MenuScreens.register` 把 `MenuType` 与 `FletchingTableScreen` 绑定。 |
 | `client/FletchingTableScreen.java` | 界面渲染：176×166 布局，背景用 `update-ft:textures/gui/ft_gui.png`（从 256×256 画布的 (0,0) 取 176×166）；`init()` 里把标题居中；`render()` 末尾手动调 `renderTooltip`（1.21.11 的父类已不再自动调用）。 |
 | `mixin/AbstractArrowMixin.java` | 箭矢与原版的**唯一接缝**（89 行）：① `@ModifyArg` 改 `onHitEntity` 里 `Entity.hurtOrSimulate(DamageSource, float)` 的伤害参数，加上 `damageBonus`；② `onHitBlock` 头部注入，一行分派——`arrow.effect().onHitBlock(level, self, hit)`；③ `onHitEntity` 在所有 return 处注入，分派到 `onHitEntity(...)`。效果返回 `true` 就移除箭并取消原版流程，返回 `false` 就放手让原版把箭插进方块。客户端拿不到 `ServerLevel`，直接交回原版，由服务端包同步。具体效果全在 `effect/` 包里，Mixin 不碰任何数值。 |
@@ -103,6 +103,7 @@ update-ft/
 | `assets/update-ft/textures/gui/ft_gui.png` | **制箭台界面贴图**，256×256 画布、面板画在 (0,0) 的 176×166 区域；设计稿的坐标表与标注图可在 git 历史（提交 `627e937`）里找到。 |
 | `assets/update-ft/lang/zh_cn.json` | 简体中文文本：9 个 `item.update-ft.*` 物品名、`container.update-ft.fletching_table`（界面标题），以及 22 条 `tooltip.update-ft.*` 悬停介绍（每行一个键）。 |
 | `assets/update-ft/lang/en_us.json` | 英文文本，键名与中文文件一一对应。 |
+| `data/update-ft/tags/item/fletching_tips.json` | **箭头格的白名单**：能放进箭头格的物品。数据包可增删（支持嵌套标签），`/reload` 即生效，不用改代码；默认 10 条与配方表的箭头材料一一对应。 |
 | `data/minecraft/tags/item/arrows.json` | 把 9 种箭并入原版 `minecraft:arrows` 物品标签，显式写了 `"replace": false`（与默认行为一致，即**合并**而非覆盖），这样弓、弩、发射器都会把它们当作合法弹药。 |
 
 ### 界面坐标
@@ -131,7 +132,10 @@ update-ft/
 4. `assets/update-ft/textures/item/<id>.png`（16×16）
 5. `lang/zh_cn.json` 与 `lang/en_us.json` —— 物品名 + `tooltip.update-ft.<id>.N`
 6. `data/minecraft/tags/item/arrows.json`
-7. 想让它能合成，再往 `FletchingRecipes` 加一行
+7. `data/update-ft/tags/item/fletching_tips.json` —— 用了新的箭头材料就加进这个标签，否则箭头格放不进去
+8. 想让它能合成，再往 `FletchingRecipes` 加一行
+
+只改第 7 步那个标签（数据包也能改，`/reload` 生效）只能让材料放得进箭头格；能做出什么仍由代码里的配方表决定。
 
 ## 发布流程
 
