@@ -244,11 +244,13 @@ public class FletchingTableMenu extends AbstractContainerMenu {
 	}
 
 	/**
-	 * 关界面时**不**再把原料还给玩家：容器由 {@link FletchingTableData} 按坐标持有，
-	 * 关掉再打开还是原来的东西，两个玩家也共用同一份。只有拆桌（或桌子被炸掉）才掉出来。
+	 * 关界面时把桌上的原料**还回玩家背包**（和工作台一致，背包满了掉在脚下），桌子随之清空。
 	 * <p>
-	 * 唯一的例外是“界面还开着的时候桌子没了”：这时 {@code stillValid} 会让界面关闭，
-	 * 我们顺手把内容物掉在原地，否则它们会一直留在存档里，再也取不出来。
+	 * 桌面不留东西：玩家很容易忘在里面，关掉之后看起来就像被吞了。
+	 * 内容物按坐标存进存档只服务两件事——界面开着时两个人共用同一份、服务器崩了不至于丢。
+	 * <p>
+	 * 两个人同时开着同一张桌子时，先关的那位不结算，等最后一个玩家关闭时再退，
+	 * 免得把别人正在用的材料收走。
 	 */
 	@Override
 	public void removed(Player player) {
@@ -260,9 +262,18 @@ public class FletchingTableMenu extends AbstractContainerMenu {
 		}
 
 		// 客户端也会回调 removed()，但它不做任何实际动作，避免刷出幽灵物品
-		if (this.blockPos != null && player.level() instanceof ServerLevel server
-				&& !server.getBlockState(this.blockPos).is(Blocks.FLETCHING_TABLE)) {
-			FletchingTableData.get(server).dropAndRemove(server, this.blockPos);
+		if (!(player.level() instanceof ServerLevel server)) {
+			return;
+		}
+		// 还有人开着这张桌子：先留着，等他关
+		if (this.input instanceof FletchingTableData.SharedContainer shared && shared.isViewed()) {
+			return;
+		}
+
+		this.clearContainer(player, this.input);
+		if (this.blockPos != null) {
+			// 东西已经退回玩家，条目直接删掉即可（桌子如果已被炸掉，也在这一步收尾）
+			FletchingTableData.get(server).discard(this.blockPos);
 		}
 	}
 }

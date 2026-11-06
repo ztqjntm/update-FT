@@ -6,6 +6,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.datafix.DataFixTypes;
 import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.entity.ContainerUser;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -53,13 +54,45 @@ public class FletchingTableData extends SavedData {
 
     private final Map<BlockPos, SimpleContainer> containers = new HashMap<>();
 
+    /**
+     * 记录“这张桌子现在有几个人开着”。
+     * <p>
+     * 关界面时要把原料退回玩家（桌上不留东西，免得玩家忘了拿还以为被吞），但两个人同时开着同一张桌子时，
+     * 先关的那个人不该把另一位正在用的材料收走——所以等最后一个玩家关闭时再结算。
+     * {@link #startOpen} / {@link #stopOpen} 由菜单在构造和 {@code removed()} 里调用。
+     */
+    public static final class SharedContainer extends SimpleContainer {
+        private int viewers;
+
+        private SharedContainer() {
+            super(SLOTS);
+        }
+
+        @Override
+        public void startOpen(ContainerUser user) {
+            this.viewers++;
+        }
+
+        @Override
+        public void stopOpen(ContainerUser user) {
+            if (this.viewers > 0) {
+                this.viewers--;
+            }
+        }
+
+        /** 还有别人开着这张桌子 */
+        public boolean isViewed() {
+            return this.viewers > 0;
+        }
+    }
+
     public FletchingTableData() {
     }
 
     /** 读档：把每条记录还原成容器，并重新挂上标脏监听 */
     private FletchingTableData(List<Entry> entries) {
         for (Entry entry : entries) {
-            SimpleContainer container = new SimpleContainer(SLOTS);
+            SimpleContainer container = new SharedContainer();
             List<ItemStack> items = entry.items();
             for (int slot = 0; slot < Math.min(items.size(), SLOTS); slot++) {
                 container.setItem(slot, items.get(slot));
@@ -89,18 +122,25 @@ public class FletchingTableData extends SavedData {
                 this.dropAndRemove(level, pos);
             }
             // 给一个临时容器：调用方（菜单）可能已经建好了，但它不该被写进存档
-            return new SimpleContainer(SLOTS);
+            return new SharedContainer();
         }
 
         if (existing != null) {
             return existing;
         }
 
-        SimpleContainer created = new SimpleContainer(SLOTS);
+        SharedContainer created = new SharedContainer();
         this.watch(created);
         this.containers.put(pos, created);
         this.setDirty();
         return created;
+    }
+
+    /** 内容已经还给玩家了，只删条目、不再往地上掉东西（正常关界面走这里） */
+    public void discard(BlockPos pos) {
+        if (this.containers.remove(pos) != null) {
+            this.setDirty();
+        }
     }
 
     /** 把某个坐标的内容物掉在原地并删掉条目（拆桌、爆炸后才发现的残条目都走这里） */
